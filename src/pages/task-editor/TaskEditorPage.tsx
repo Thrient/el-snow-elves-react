@@ -226,6 +226,7 @@ const TaskEditorPage: FC = () => {
   const isEditing = !!editor.currentTask;
 
   const restorePromptedRef = useRef(false);
+  const initRef = useRef(false);
 
   // effects
   useEffect(() => {
@@ -237,11 +238,13 @@ const TaskEditorPage: FC = () => {
         okText: "恢复", cancelText: "放弃",
         onOk: async () => {
           if (!editor.currentTask) return;
+          initRef.current = true;
           const positions = await window.pywebview?.api.emit("API:TASK:LOAD:POSITIONS", editor.currentTask.id).catch(() => ({})) ?? {};
           setSavedPositions(positions);
           requestAnimationFrame(() => {
             const { nodes, edges } = taskToFlow(editor.currentTask!, positions);
             setFlowNodes(nodes); setFlowEdges(edges);
+            setTimeout(() => { initRef.current = false; }, 200);
           });
         },
         onCancel: () => editor.discardDraft(),
@@ -261,12 +264,15 @@ const TaskEditorPage: FC = () => {
 
   // handlers
   const openTask = async (task: FullTask) => {
+    initRef.current = true;
     await editor.loadTask(task.id);
     const positions = await window.pywebview?.api.emit("API:TASK:LOAD:POSITIONS", task.id).catch(() => ({})) ?? {};
     setSavedPositions(positions);
     requestAnimationFrame(() => {
       const { nodes, edges } = taskToFlow(task, positions);
       setFlowNodes(nodes); setFlowEdges(edges);
+      // Unlock after ReactFlow finishes processing the initial nodes
+      setTimeout(() => { initRef.current = false; }, 200);
     });
   };
 
@@ -440,8 +446,8 @@ const TaskEditorPage: FC = () => {
       <div className="flex flex-1 min-h-0">
         <div className="flex-1 min-h-0 bg-[#fcfcfd]">
           <FlowEditor task={editor.currentTask} nodes={flowNodes} edges={flowEdges}
-            onNodesChange={(ns) => { setFlowNodes(ns); editor.setDirty(true); }}
-            onEdgesChange={(es) => { setFlowEdges(es); editor.setDirty(true); }}
+            onNodesChange={(ns) => { setFlowNodes(ns); if (!initRef.current) editor.setDirty(true); }}
+            onEdgesChange={(es) => { setFlowEdges(es); if (!initRef.current) editor.setDirty(true); }}
             onConnect={() => editor.setDirty(true)}
             onNodesDelete={(ids) => {
               ids.forEach((id) => {
