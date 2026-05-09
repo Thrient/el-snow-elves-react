@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { temporal } from "zundo";
 import type { FullTask, Step } from "@/types/task";
 
 type ViewMode = "json" | "flow";
@@ -31,8 +32,9 @@ type EditorState = {
 };
 
 export const useEditorStore = create<EditorState>()(
-  persist(
-    (set, get) => ({
+  temporal(
+    persist(
+      (set, get) => ({
       currentTask: null,
       isDirty: false,
       loading: false,
@@ -147,5 +149,9 @@ export const useEditorStore = create<EditorState>()(
         isDirty: state.isDirty,
       }),
     }
-  )
+  ),
+  {
+    partialize: (state: EditorState) => ({ currentTask: state.currentTask }),
+    limit: 50,
+  }
 );

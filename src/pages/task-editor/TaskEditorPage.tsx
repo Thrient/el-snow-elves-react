@@ -3,7 +3,7 @@ import {
   Button, Input, InputNumber, message, Modal, Select, Space, Tag, Tooltip,
 } from "antd";
 import {
-  ArrowLeftOutlined, CameraOutlined, CodeOutlined, EditOutlined,
+  ArrowLeftOutlined, ArrowRightOutlined, CameraOutlined, CodeOutlined, EditOutlined,
   FolderOpenOutlined, FunctionOutlined, PlusOutlined, SaveOutlined,
   ReloadOutlined, PlayCircleOutlined, SettingOutlined,
 } from "@ant-design/icons";
@@ -124,6 +124,8 @@ const TaskEditorPage: FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [varsOpen, setVarsOpen] = useState(false);
   const [drawerStep, setDrawerStep] = useState<{ name: string; isCommon: boolean } | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
   const [globalCommonNames, setGlobalCommonNames] = useState<string[]>([]);
   const [savedPositions, setSavedPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [newName, setNewName] = useState("");
@@ -310,10 +312,21 @@ const TaskEditorPage: FC = () => {
   const handleSaveRef = useRef(handleSave);
   handleSaveRef.current = handleSave;
 
+  // Temporal (undo/redo) subscription
+  useEffect(() => {
+    const unsub = useEditorStore.temporal.subscribe((s) => {
+      setCanUndo(s.pastStates.length > 0);
+      setCanRedo(s.futureStates.length > 0);
+    });
+    return unsub;
+  }, []);
+
   useEffect(() => {
     if (!isEditing) return;
     const h = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSaveRef.current(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); useEditorStore.temporal.getState().undo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); useEditorStore.temporal.getState().redo(); }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
@@ -394,6 +407,13 @@ const TaskEditorPage: FC = () => {
             <span className="text-sm font-bold text-[#1a1a2e]">{editor.currentTask.name}</span>
             <Tag color="blue" className="m-0 text-[11px]">v{editor.currentTask.version}</Tag>
             {editor.isDirty && <Tag color="orange" className="m-0 text-[11px]">已修改</Tag>}
+          </div>
+          <div className="w-px h-5 bg-[#e5e7eb] mx-1" />
+          <div className="flex items-center gap-0.5">
+            <Tooltip title="撤销 Ctrl+Z"><Button size="small" type="text" icon={<ArrowLeftOutlined />} disabled={!canUndo}
+              onClick={() => useEditorStore.temporal.getState().undo()} /></Tooltip>
+            <Tooltip title="重做 Ctrl+Y"><Button size="small" type="text" icon={<ArrowRightOutlined />} disabled={!canRedo}
+              onClick={() => useEditorStore.temporal.getState().redo()} /></Tooltip>
           </div>
           <div className="w-px h-5 bg-[#e5e7eb] mx-1" />
           <Button size="small" icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)}>设置</Button>
