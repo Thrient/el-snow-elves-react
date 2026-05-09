@@ -313,6 +313,15 @@ const TaskEditorPage: FC = () => {
   handleSaveRef.current = handleSave;
 
   // Temporal (undo/redo) subscription
+  const syncFlowFromTask = useCallback(() => {
+    const task = useEditorStore.getState().currentTask;
+    if (!task) return;
+    requestAnimationFrame(() => {
+      const { nodes, edges } = taskToFlow(task, savedPositions);
+      setFlowNodes(nodes); setFlowEdges(edges);
+    });
+  }, [savedPositions]);
+
   useEffect(() => {
     const unsub = useEditorStore.temporal.subscribe((s) => {
       setCanUndo(s.pastStates.length > 0);
@@ -325,8 +334,8 @@ const TaskEditorPage: FC = () => {
     if (!isEditing) return;
     const h = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSaveRef.current(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); useEditorStore.temporal.getState().undo(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); useEditorStore.temporal.getState().redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); useEditorStore.temporal.getState().undo(); syncFlowFromTask(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); useEditorStore.temporal.getState().redo(); syncFlowFromTask(); }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
@@ -411,9 +420,9 @@ const TaskEditorPage: FC = () => {
           <div className="w-px h-5 bg-[#e5e7eb] mx-1" />
           <div className="flex items-center gap-0.5">
             <Tooltip title="撤销 Ctrl+Z"><Button size="small" type="text" icon={<ArrowLeftOutlined />} disabled={!canUndo}
-              onClick={() => useEditorStore.temporal.getState().undo()} /></Tooltip>
+              onClick={() => { useEditorStore.temporal.getState().undo(); syncFlowFromTask(); }} /></Tooltip>
             <Tooltip title="重做 Ctrl+Y"><Button size="small" type="text" icon={<ArrowRightOutlined />} disabled={!canRedo}
-              onClick={() => useEditorStore.temporal.getState().redo()} /></Tooltip>
+              onClick={() => { useEditorStore.temporal.getState().redo(); syncFlowFromTask(); }} /></Tooltip>
           </div>
           <div className="w-px h-5 bg-[#e5e7eb] mx-1" />
           <Button size="small" icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)}>设置</Button>

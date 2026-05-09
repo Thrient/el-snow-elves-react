@@ -94,7 +94,7 @@ const FlowEditor: FC<Props> = ({
           <div className="fixed inset-0 z-50" onClick={() => setMenu(null)} />
           <div className="absolute z-50 bg-white rounded-xl shadow-lg border border-[#eef0f2] py-1 min-w-[180px] overflow-hidden"
             style={{ left: menu.x, top: menu.y }}>
-            <button className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#f5f7fa] transition-colors text-left"
+            <button className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#f5f7fa] transition-colors text-left border-0 bg-transparent"
               onClick={() => { onCreateStep(menu.x, menu.y, false); setMenu(null); }}>
               <div className="w-7 h-7 rounded-lg bg-[#eef2ff] flex items-center justify-center shrink-0">
                 <span className="text-[13px] text-[#1677ff]">+</span>
@@ -104,7 +104,7 @@ const FlowEditor: FC<Props> = ({
                 <div className="text-[10px] text-[#8b8fa3] leading-tight">添加一个任务步骤</div>
               </div>
             </button>
-            <button className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#f5f7fa] transition-colors text-left"
+            <button className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#f5f7fa] transition-colors text-left border-0 bg-transparent"
               onClick={() => { onCreateStep(menu.x, menu.y, true); setMenu(null); }}>
               <div className="w-7 h-7 rounded-lg bg-[#fff7e6] flex items-center justify-center shrink-0">
                 <span className="text-[13px] text-[#f59e0b]">+</span>

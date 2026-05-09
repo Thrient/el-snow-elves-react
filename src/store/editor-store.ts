@@ -144,7 +144,7 @@ export const useEditorStore = create<EditorState>()(
       },
     }),
     {
-      name: "editor-draft",
+      name: "editor-draft-v2",
       partialize: (state) => state.isDirty ? { currentTask: state.currentTask } : { currentTask: null },
     }
   ),
