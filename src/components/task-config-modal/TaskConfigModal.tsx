@@ -46,9 +46,10 @@ const TaskConfigModal: FC<Props> = ({ open, task, onClose, onSave }) => {
               >
                 <SettingsField
                   cell={cell}
-                  value={formValues[cell.store ?? ""]}
-                  onChange={(v) =>
-                    setFormValues((prev) => ({ ...prev, [cell.store ?? ""]: v }))
+                  value={cell.store ? formValues[cell.store] : undefined}
+                  onChange={cell.store
+                    ? (v) => setFormValues((prev) => ({ ...prev, [cell.store as string]: v }))
+                    : () => {}
                   }
                 />
               </div>

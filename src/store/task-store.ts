@@ -8,7 +8,7 @@ type State = {
 
 type Actions = {
   loadTasks: () => Promise<void>
-  updateTaskValues: (name: string, values: Record<string, unknown>) => void
+  updateTaskValues: (id: string, values: Record<string, unknown>) => void
 }
 
 export const useTaskStore = create<State & Actions>((set) => ({
@@ -24,10 +24,10 @@ export const useTaskStore = create<State & Actions>((set) => ({
     }
   },
 
-  updateTaskValues: (name, values) =>
+  updateTaskValues: (id, values) =>
     set((state) => ({
       taskList: state.taskList.map((t) =>
-        t.name === name ? { ...t, values } : t
+        t.id === id ? { ...t, values } : t
       ),
     })),
 }))

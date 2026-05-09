@@ -8,6 +8,7 @@ import {
   MinusCircleOutlined,
   PictureOutlined,
   PlayCircleOutlined,
+  PauseCircleOutlined,
   PlusOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
@@ -19,6 +20,8 @@ import HwndPreviewModal from "@/components/hwnd-preview-modal/HwndPreviewModal.t
 import { useUserStore } from "@/store/user-store.ts";
 import { useTaskStore } from "@/store/task-store.ts";
 import TaskConfigModal from "@/components/task-config-modal/TaskConfigModal.tsx";
+
+const DOT_COLORS = ['#1677ff', '#52c41a', '#fa8c16', '#722ed1', '#13c2c2']
 
 const WindowsPage: FC = () => {
   const userStore = useUserStore();
@@ -107,11 +110,14 @@ const WindowsPage: FC = () => {
   return (
     <>
       <div className="flex flex-col h-[calc(100%-48px)] bg-white rounded-lg mx-4 mb-4 p-4 shadow-sm">
-        {/* Top bar */}
-        <div className="flex justify-between items-center h-40px shrink-0">
-          <span className="text-lg font-bold text-[#1a1a2e]">
-            <DesktopOutlined /> 窗口管理
-          </span>
+        {/* ---- Top bar ---- */}
+        <div className="flex justify-between items-center h-10 shrink-0 mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-5 rounded-full bg-[#1677ff]" />
+            <span className="text-base font-semibold text-[#1a1a2e] tracking-tight">
+              <DesktopOutlined className="mr-2 text-[#1677ff]" />窗口管理
+            </span>
+          </div>
 
           <Space>
             <Button type="primary" icon={<PlusOutlined />} onClick={bind}>
@@ -134,9 +140,10 @@ const WindowsPage: FC = () => {
           </Space>
         </div>
 
-        <div className="bg-[#f9fafbff] rounded-lg p-3 flex items-center gap-2 flex-wrap shrink-0">
-          <DesktopOutlined className="text-lg" />
-          <span className="text-sm whitespace-nowrap">选择游戏窗口：</span>
+        {/* ---- Control bar ---- */}
+        <div className="bg-[#f9fafb] rounded-xl p-3 flex items-center gap-3 flex-wrap shrink-0 border border-[#eef0f2]">
+          <DesktopOutlined className="text-base text-[#8b8fa3]" />
+          <span className="text-[13px] text-[#6b7280] whitespace-nowrap font-medium">选择窗口</span>
           <Select
             style={{ width: 220 }}
             placeholder="请选择游戏窗口"
@@ -150,45 +157,45 @@ const WindowsPage: FC = () => {
                 <Space>
                   <div className="h-full flex items-center gap-1">
                     {character.character ? (
-                      <img className="h-4" src={character.character} alt="" />
+                      <img className="h-4 rounded" src={character.character} alt="" />
                     ) : (
-                      <span className="flex items-center gap-1">
-                        <DesktopOutlined
-                          className="text-xs text-gray-400"
-                          style={{ transform: "translateY(1px)" }}
-                        />
-                        <span className="text-xs text-gray-400">暂无截图</span>
-                      </span>
+                      <DesktopOutlined className="text-xs text-gray-400" />
                     )}
                   </div>
-                  <Tag color={character.running ? "green" : "default"}>
+                  <Tag color={character.running ? "green" : "default"} className="text-[11px] leading-none m-0">
                     {character.running ? "运行中" : "已停止"}
                   </Tag>
                 </Space>
               </Select.Option>
             ))}
           </Select>
+
+          <div className="w-px h-5 bg-[#e5e7eb] mx-0.5" />
+
           <Button
-            type="primary"
-            icon={<PlayCircleOutlined />}
+            type={selectedCharacter?.running ? "default" : "primary"}
+            icon={selectedCharacter?.running ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
             disabled={!characterStore.selectedHwnd}
             onClick={() => {
               if (!characterStore.selectedHwnd) return;
               const hwnd = characterStore.selectedHwnd;
               const wasRunning = selectedCharacter?.running;
-              // TODO: call backend API to start/stop execution, then update status
-              window.pywebview?.api.emit(wasRunning ? "API:SCRIPT:PAUSE" : "API:SCRIPT:RESUME", hwnd).then(() => {
-                const char = characterStore.characters.find((c) => c.hwnd === hwnd);
-                if (char) {
-                  characterStore.update({ ...char, running: !wasRunning, currentTask: wasRunning ? null : char.currentTask });
+              const action = wasRunning ? "API:SCRIPT:PAUSE" : "API:SCRIPT:RESUME";
+              window.pywebview?.api.emit(action, hwnd).then(() => {
+                const state = useCharacterStore.getState();
+                const ch = state.characters.find((c) => c.hwnd === hwnd);
+                if (ch) {
+                  characterStore.update({ ...ch, running: !ch.running });
                 }
               });
             }}
           >
-            {selectedCharacter?.running ? "停止运行" : "开始执行"}
+            {selectedCharacter?.running ? "暂停" : "开始执行"}
           </Button>
+
           <Button
             icon={<ClearOutlined />}
+            disabled={!selectedCharacter?.executeList.length}
             onClick={() => {
               if (characterStore.selectedHwnd) {
                 characterStore.clearExecute(characterStore.selectedHwnd);
@@ -197,23 +204,24 @@ const WindowsPage: FC = () => {
           >
             清空列表
           </Button>
-          <span className="text-xs text-gray-400">
-            共 {selectedCharacter?.executeList.length ?? 0} 个任务
+
+          <span className="text-xs text-[#8b8fa3] ml-auto">
+            {selectedCharacter?.executeList.length ?? 0} 个待执行
           </span>
         </div>
 
-        {/* Content area */}
+        {/* ---- Content area ---- */}
         <div className="flex-1 min-h-0 mt-4">
           {!selectedCharacter ? (
             <div className="h-full flex items-center justify-center">
-              <Empty description="请先选择游戏窗口" />
+              <Empty description="请先绑定或选择游戏窗口" />
             </div>
           ) : (
             <div className="flex gap-5 h-full">
-              {/* Left: main panel */}
+              {/* ---- Left: main panel ---- */}
               <div className="flex-1 flex flex-col gap-4 min-w-0">
                 {/* Preview card */}
-                <div className="relative flex-1 min-h-0 rounded-xl border border-[#eef0f2] bg-[#f9fafb] overflow-hidden group">
+                <div className="relative flex-1 min-h-0 rounded-xl border border-[#eef0f2] bg-[#fafbfc] overflow-hidden group">
                   {selectedCharacter.preview ? (
                     <img
                       src={selectedCharacter.preview}
@@ -222,52 +230,54 @@ const WindowsPage: FC = () => {
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-3">
-                      <div className="w-16 h-16 rounded-full bg-[#f0f2f5] flex items-center justify-center">
-                        <PictureOutlined className="text-2xl text-[#b0b8c4]" />
+                      <div className="w-14 h-14 rounded-2xl bg-[#f0f2f5] flex items-center justify-center">
+                        <PictureOutlined className="text-xl text-[#b0b8c4]" />
                       </div>
-                      <span className="text-sm text-[#b0b8c4]">窗口预览</span>
+                      <span className="text-[13px] text-[#b0b8c4]">窗口预览</span>
                     </div>
                   )}
-                  {/* HWND badge overlay */}
-                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/50 backdrop-blur-sm text-xs text-white font-mono">
+
+                  {/* HWND badge */}
+                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/55 backdrop-blur-sm text-[11px] text-white font-mono tracking-wide">
                     {selectedCharacter.hwnd}
                   </div>
-                  {/* Status dot */}
-                  <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm">
-                    <span className={`w-2 h-2 rounded-full ${selectedCharacter.running ? "bg-green-400 animate-pulse" : "bg-gray-400"}`} />
-                    <span className="text-xs text-white">{selectedCharacter.running ? "运行中" : "已停止"}</span>
+
+                  {/* Status indicator */}
+                  <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm">
+                    <span className={`w-2 h-2 rounded-full ${selectedCharacter.running ? "bg-green-400 shadow-[0_0_6px_rgba(82,196,26,0.6)]" : "bg-gray-400"}`} />
+                    <span className="text-[11px] text-white font-medium">{selectedCharacter.running ? "运行中" : "已停止"}</span>
                   </div>
                 </div>
 
-                {/* Action cards row */}
+                {/* ---- Action cards row ---- */}
                 <div className="flex gap-4 shrink-0">
-                  {/* Screenshot card */}
+                  {/* Screenshot */}
                   <div
-                    className={`flex-1 flex items-center gap-4 px-5 py-4 rounded-xl border transition-all cursor-pointer select-none ${
+                    className={`flex-1 flex items-center gap-4 px-5 py-4 rounded-xl border transition-all duration-200 cursor-pointer select-none ${
                       screenshotFlash
-                        ? "border-[#1677ff] bg-[#eef2ff] scale-97 shadow-[0_0_0_3px_rgba(22,119,255,0.15)]"
-                        : "border-[#eef0f2] bg-white hover:border-[#dde0e6] hover:shadow-sm"
+                        ? "border-[#1677ff] bg-[#eef2ff] scale-[0.97] shadow-[0_0_0_3px_rgba(22,119,255,0.15)]"
+                        : "border-[#eef0f2] bg-white hover:border-[#d0d4dd] hover:shadow-sm"
                     }`}
                     onClick={() => {
                       if (!characterStore.selectedHwnd) return;
                       setScreenshotFlash(true);
-                      setTimeout(() => setScreenshotFlash(false), 200);
+                      setTimeout(() => setScreenshotFlash(false), 250);
                       window.pywebview?.api.emit("API:SCRIPT:SCREENSHOT", characterStore.selectedHwnd);
                     }}
                   >
-                    <div className="w-10 h-10 rounded-lg bg-[#eef2ff] flex items-center justify-center shrink-0">
-                      <CameraOutlined className="text-lg text-[#1677ff]" />
+                    <div className="w-9 h-9 rounded-lg bg-[#eef2ff] flex items-center justify-center shrink-0">
+                      <CameraOutlined className="text-base text-[#1677ff]" />
                     </div>
                     <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-sm text-[#1a1a2e] font-medium">截图</span>
-                      <span className="text-xs text-[#8b8fa3]">捕获当前窗口画面</span>
+                      <span className="text-[13px] text-[#1a1a2e] font-semibold">截图</span>
+                      <span className="text-[11px] text-[#8b8fa3]">捕获当前窗口画面</span>
                     </div>
                   </div>
 
-                  {/* Opacity card */}
-                  <div className="flex-1 flex items-center gap-4 px-5 py-4 rounded-xl border border-[#eef0f2] bg-white hover:border-[#dde0e6] hover:shadow-sm transition-all">
+                  {/* Opacity */}
+                  <div className="flex-1 flex items-center gap-4 px-5 py-4 rounded-xl border border-[#eef0f2] bg-white hover:border-[#d0d4dd] hover:shadow-sm transition-all duration-200">
                     <CircularSlider
-                      size={48}
+                      size={44}
                       strokeWidth={5}
                       max={255}
                       value={selectedCharacter?.opacity ?? 255}
@@ -279,35 +289,38 @@ const WindowsPage: FC = () => {
                       }}
                     />
                     <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-sm text-[#1a1a2e] font-medium">透明度</span>
-                      <span className="text-xs text-[#8b8fa3]">{selectedCharacter?.opacity ?? 255} / 255</span>
+                      <span className="text-[13px] text-[#1a1a2e] font-semibold">透明度</span>
+                      <span className="text-[11px] text-[#8b8fa3] tabular-nums">{selectedCharacter?.opacity ?? 255} / 255</span>
                     </div>
                   </div>
 
-                  {/* Current task card */}
-                  <div className="flex-1 flex items-center gap-4 px-5 py-4 rounded-xl border border-[#eef0f2] bg-white hover:border-[#dde0e6] hover:shadow-sm transition-all">
-                    <div className="w-10 h-10 rounded-lg bg-[#f0faf4] flex items-center justify-center shrink-0">
-                      <PlayCircleOutlined className="text-lg text-[#52c41a]" />
+                  {/* Current task */}
+                  <div className="flex-1 flex items-center gap-4 px-5 py-4 rounded-xl border border-[#eef0f2] bg-white">
+                    <div className="w-9 h-9 rounded-lg bg-[#f0faf4] flex items-center justify-center shrink-0">
+                      <PlayCircleOutlined className="text-base text-[#52c41a]" />
                     </div>
                     <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-sm text-[#1a1a2e] font-medium">当前任务</span>
-                      <span className="text-xs text-[#8b8fa3] truncate">{selectedCharacter.currentTask ?? "无任务"}</span>
+                      <span className="text-[13px] text-[#1a1a2e] font-semibold">当前任务</span>
+                      <span className={`text-[11px] truncate ${selectedCharacter.currentTask ? "text-[#374151] font-medium" : "text-[#b0b8c4]"}`}>
+                        {selectedCharacter.currentTask ?? "无任务"}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Right: task list */}
+              {/* ---- Right: execute list ---- */}
               <div className="w-64 shrink-0 flex flex-col">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2 text-sm font-medium text-[#1a1a2e]">
-                    <UnorderedListOutlined />
+                  <div className="flex items-center gap-2 text-[13px] font-semibold text-[#1a1a2e]">
+                    <UnorderedListOutlined className="text-[#8b8fa3]" />
                     待执行任务
                   </div>
-                  <span className="text-xs text-[#8b8fa3] bg-[#f5f5f7] px-2 py-0.5 rounded-full">
+                  <span className="text-[11px] text-[#8b8fa3] bg-[#f5f5f7] px-2 py-0.5 rounded-full font-medium">
                     {selectedCharacter.executeList.length}
                   </span>
                 </div>
+
                 <div className="flex-1 rounded-xl border border-[#eef0f2] bg-[#fafbfc] overflow-y-auto">
                   {selectedCharacter.executeList.length === 0 ? (
                     <div className="h-full flex items-center justify-center">
@@ -315,7 +328,7 @@ const WindowsPage: FC = () => {
                     </div>
                   ) : (
                     <div className="p-2 flex flex-col gap-1.5">
-                      {selectedCharacter.executeList.map((item) => (
+                      {selectedCharacter.executeList.map((item, idx) => (
                         <div
                           key={item._uid}
                           draggable
@@ -323,24 +336,17 @@ const WindowsPage: FC = () => {
                           onDragEnd={handleDragEnd}
                           onDragOver={handleDragOver}
                           onDrop={handleDrop(item._uid)}
-                          className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white border border-[var(--color-border)] hover:border-[#dde0e6] hover:shadow-sm transition-all group cursor-grab active:cursor-grabbing"
-                          style={{
-                            opacity: dragUid === item._uid ? 0.4 : 1,
-                          }}
+                          className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white border border-[#eef0f2] hover:border-[#d0d4dd] hover:shadow-sm transition-all duration-150 group cursor-grab active:cursor-grabbing"
+                          style={{ opacity: dragUid === item._uid ? 0.4 : 1 }}
                           onClick={() => openConfig(item._uid)}
                         >
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <div
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{
-                                backgroundColor:
-                                  ["#1677ff", "#52c41a", "#fa8c16", "#722ed1", "#13c2c2"][
-                                    item._uid % 5
-                                  ],
-                              }}
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: DOT_COLORS[idx % DOT_COLORS.length] }}
                             />
-                            <span className="text-xs text-[#1a1a2e] truncate">{item.name}</span>
-                            <Tag className="text-[10px] leading-none border-none rounded-sm px-1 py-0.5 m-0 text-[#999] bg-[#f5f5f5]">
+                            <span className="text-[12px] text-[#1a1a2e] truncate font-medium">{item.name}</span>
+                            <Tag className="text-[10px] leading-none border-none rounded-sm px-1.5 py-0.5 m-0 text-[#999] bg-[#f5f5f5] font-mono">
                               v{item.version}
                             </Tag>
                           </div>
@@ -351,7 +357,7 @@ const WindowsPage: FC = () => {
                               characterStore.removeExecute(selectedCharacter.hwnd, item._uid);
                             }}
                           >
-                            <CloseOutlined className="text-xs" />
+                            <CloseOutlined className="text-[11px]" />
                           </span>
                         </div>
                       ))}
@@ -377,7 +383,7 @@ const WindowsPage: FC = () => {
                   running: true,
                   opacity: 255,
                   currentTask: null,
-                  executeList: userStore.taskList.map((t) => ({
+                  executeList: userStore.queue.map((t) => ({
                     id: t.id,
                     name: t.name,
                     version: t.version,

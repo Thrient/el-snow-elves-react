@@ -61,7 +61,7 @@ const SettingsField: FC<Props> = ({ cell, value, onChange }) => {
             readOnly={cell.readOnly}
             controls={cell.controls}
             size={cell.size}
-            onChange={(v) => v != null && onChange(v)}
+            onChange={(v) => onChange(v)}
           />
         </div>
       );

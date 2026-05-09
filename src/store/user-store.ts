@@ -1,13 +1,13 @@
 import { create } from 'zustand'
-import type { Task } from "@/types/task.ts";
+import type { TaskBase } from "@/types/task.ts";
 
-type TaskEntry = Omit<Task, "layout"> & { _uid: number }
+type QueueEntry = TaskBase & { _uid: number }
 
 let _nextUid = 0
 
 type State = {
-  taskList: TaskEntry[]
-  appendTask: (task: Omit<Task, "layout">) => void
+  queue: QueueEntry[]
+  appendTask: (task: TaskBase) => void
   removeTask: (uid: number) => void
   clearTaskList: () => void
   updateTaskValues: (uid: number, values: Record<string, unknown>) => void
@@ -15,24 +15,24 @@ type State = {
 }
 
 export const useUserStore = create<State>((set) => ({
-  taskList: [],
-  appendTask: (task: Omit<Task, "layout">) => {
+  queue: [],
+  appendTask: (task) => {
     const uid = _nextUid++
     set((state) => ({
-      taskList: [...state.taskList, { ...task, _uid: uid }]
+      queue: [...state.queue, { id: task.id, name: task.name, version: task.version, values: { ...task.values }, _uid: uid }]
     }))
   },
   removeTask: (uid: number) =>
     set((state) => ({
-      taskList: state.taskList.filter((t) => t._uid !== uid)
+      queue: state.queue.filter((t) => t._uid !== uid)
     })),
   clearTaskList: () =>
     set(() => ({
-      taskList: []
+      queue: []
     })),
   updateTaskValues: (uid: number, values: Record<string, unknown>) =>
     set((state) => ({
-      taskList: state.taskList.map((t) =>
+      queue: state.queue.map((t) =>
         t._uid === uid ? { ...t, values } : t
       )
     })),
@@ -43,10 +43,15 @@ export const useUserStore = create<State>((set) => ({
       for (const key of keys) {
         if (typeof state[key] === "function") continue
         if (!(key in payload)) continue
-        if (key === "taskList") {
-          next.taskList = Array.isArray(payload.taskList)
-            ? (payload.taskList as Task[]).map((t) => ({ ...t, _uid: _nextUid++ }))
-            : []
+        if (key === "queue") {
+          const raw = Array.isArray(payload.queue) ? payload.queue : (Array.isArray((payload as any).taskList) ? (payload as any).taskList : [])
+          next.queue = raw.map((t: Record<string, unknown>) => ({
+            id: t.id as string,
+            name: t.name as string,
+            version: t.version as string,
+            values: (t.values ?? {}) as Record<string, unknown>,
+            _uid: _nextUid++,
+          }))
         } else {
           ;(next as any)[key] = payload[key as string]
         }

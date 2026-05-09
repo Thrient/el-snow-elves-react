@@ -1,12 +1,8 @@
 import { create } from 'zustand'
 import { useSettingsStore } from '@/store/settings-store'
+import type { TaskBase } from '@/types/task'
 
-export type ExecuteItem = {
-  id: string
-  name: string
-  version: string
-  values: Record<string, unknown>
-}
+export type ExecuteItem = TaskBase
 
 type ExecuteEntry = ExecuteItem & { _uid: number }
 

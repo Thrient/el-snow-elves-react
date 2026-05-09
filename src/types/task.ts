@@ -82,13 +82,16 @@ export type Cell = {
   autocompleteContext?: AutocompleteContext
 }
 
-export type Task = {
+export type TaskBase = {
   id: string
   name: string
-  description: string
   version: string
-  author: string
   values: Record<string, unknown>
+}
+
+export type Task = TaskBase & {
+  description: string
+  author: string
   layout: Cell[][]
 }
 
@@ -126,15 +129,8 @@ export interface MonitorConfig {
   interval?: number
 }
 
-export interface FullTask {
-  id: string
-  name: string
-  description: string
-  version: string
-  author: string
+export interface FullTask extends Task {
   start: string
-  values: Record<string, unknown>
-  layout: Cell[][]
   steps: Record<string, Step>
   common: Record<string, Step>
   monitors: MonitorConfig

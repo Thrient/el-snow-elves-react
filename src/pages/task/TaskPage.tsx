@@ -10,6 +10,8 @@ import type { Task } from "@/types/task.ts";
 import { useUserStore } from "@/store/user-store.ts";
 import { useTaskStore } from "@/store/task-store.ts";
 
+const TAG_COLORS = ['#1677ff', '#13c2c2', '#2f54eb', '#722ed1', '#fa8c16', '#52c41a']
+
 const TaskPage: FC = () => {
   const appendTask = useUserStore((s) => s.appendTask);
   const taskList = useTaskStore((s) => s.taskList);
@@ -31,7 +33,7 @@ const TaskPage: FC = () => {
 
   const handleConfigSave = (values: Record<string, unknown>) => {
     if (configTask) {
-      updateTaskValues(configTask.name, values);
+      updateTaskValues(configTask.id, values);
     }
     closeConfig();
   };
@@ -41,89 +43,118 @@ const TaskPage: FC = () => {
       title: '任务名称',
       dataIndex: 'name',
       key: 'name',
-      width: 150,
+      width: 160,
+      render: (name: string) => (
+        <span className="font-medium text-[#1a1a2e]">{name}</span>
+      ),
     },
     {
       title: '版本',
       dataIndex: 'version',
       key: 'version',
-      width: 100,
+      width: 80,
+      render: (v: string) => (
+        <Tag className="m-0 text-[11px] bg-[#f0f2f5] text-[#8b8fa3] border-none rounded font-mono">{v}</Tag>
+      ),
     },
     {
       title: '作者',
       dataIndex: 'author',
       key: 'author',
-      width: 120,
+      width: 100,
+      render: (author: string) => (
+        <span className="text-[#6b7280] text-[13px]">{author || '—'}</span>
+      ),
     },
     {
       title: '配置项',
       key: 'config',
-      render: (_, record) => (
-        <Space size={[4, 4]} wrap>
-          {Object.entries(record.values).map(([key, value], i) => (
-            <Tag
-              key={key}
-              className="h-6 leading-6 rounded-md text-white border-none flex items-center"
-              style={{ backgroundColor: ['#1677ff', '#13c2c2', '#2f54eb', '#722ed1', '#fa8c16', '#52c41a'][i % 6] }}
-            >{`${key}: ${String(value)}`}</Tag>
-          ))}
-        </Space>
-      ),
+      render: (_, record) => {
+        const entries = Object.entries(record.values);
+        if (entries.length === 0) {
+          return <span className="text-[#ccc] text-xs">暂无配置</span>;
+        }
+        const shown = entries.slice(0, 4);
+        const rest = entries.length - shown.length;
+        return (
+          <Space size={[4, 4]} wrap>
+            {shown.map(([key, value], i) => (
+              <Tag
+                key={key}
+                className="h-6 leading-6 rounded text-white border-none flex items-center text-[11px] m-0 px-2"
+                style={{ backgroundColor: TAG_COLORS[i % TAG_COLORS.length] }}
+              >{`${key}: ${String(value)}`}</Tag>
+            ))}
+            {rest > 0 && (
+              <Tag className="h-6 leading-6 rounded border-[#eef0f2] text-[#8b8fa3] text-[11px] m-0">
+                +{rest}
+              </Tag>
+            )}
+          </Space>
+        );
+      },
     },
     {
       title: '操作',
       key: 'action',
-      width: 220,
+      width: 180,
       render: (_, record) => (
-        <Space>
+        <Space size={8}>
           <Button
             size="small"
             type="primary"
-            icon={<PlusOutlined/>}
+            icon={<PlusOutlined />}
             onClick={() => appendTask({
               id: record.id,
               name: record.name,
-              description: record.description,
               version: record.version,
-              author: record.author,
               values: { ...record.values },
             })}
           >
-            添加任务
+            添加
           </Button>
           <Button
             size="small"
-            icon={<EditOutlined/>}
+            icon={<EditOutlined />}
             onClick={() => openConfig(record)}
           >
             配置
           </Button>
         </Space>
-      )
-    }
-  ]
+      ),
+    },
+  ];
 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg mx-4 mb-4 p-4 shadow-sm">
-      <div className="flex justify-between items-center h-40px shrink-0">
-        <span className="text-lg font-bold text-[#1a1a2e]">
-          <ProfileOutlined className="mr-2"/>任务管理
-        </span>
+      <div className="flex items-center justify-between h-10 shrink-0 mb-1">
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-5 rounded-full bg-[#1677ff]" />
+          <span className="text-base font-semibold text-[#1a1a2e] tracking-tight">
+            <ProfileOutlined className="mr-2 text-[#1677ff]" />
+            任务管理
+          </span>
+          <span className="text-xs text-[#8b8fa3] bg-[#f5f5f7] px-2 py-0.5 rounded-full">
+            {taskList.length}
+          </span>
+        </div>
       </div>
 
-      <div className="flex-1 min-h-0 pt-4">
+      <div className="flex-1 min-h-0">
         <Table
           columns={columns}
           dataSource={taskList}
-          rowKey="name"
+          rowKey="id"
           size="middle"
           pagination={false}
           loading={loading}
+          locale={{ emptyText: '暂无任务，请在编辑器新建' }}
+          rowClassName={() => 'group'}
         />
       </div>
 
       <TaskConfigModal
-        key={configTask?.name ?? "none"}
+        key={configTask?.id ?? "none"}
         open={configOpen}
         task={configTask}
         onClose={closeConfig}

@@ -48,8 +48,11 @@ const SettingsPage: FC = () => {
                     ) : (
                       <SettingsField
                         cell={cell}
-                        value={values[cell.store ?? ""]}
-                        onChange={(v) => updateValue(cell.store ?? "", v)}
+                        value={cell.store ? values[cell.store] : undefined}
+                        onChange={cell.store
+                          ? (v) => updateValue(cell.store as string, v)
+                          : () => {}
+                        }
                       />
                     )}
                   </div>
