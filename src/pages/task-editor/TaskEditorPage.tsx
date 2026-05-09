@@ -151,25 +151,25 @@ const TaskEditorPage: FC = () => {
 
   const configKeys = useMemo(() => Object.keys(settingsStore.values ?? {}), [settingsStore.values]);
 
-  const stepKeys = useMemo(() => {
-    const s = editor.currentTask?.steps ?? {};
-    const c = editor.currentTask?.common ?? {};
-    const local = [...Object.keys(s), ...Object.keys(c)];
-    const global = globalCommonNames.filter((n) => !s[n] && !c[n]);
-    return [...local, ...global];
-  }, [editor.currentTask?.steps, editor.currentTask?.common, globalCommonNames]);
+  // Three separate step-name sources, merged only at point of use
+  const taskStepNames = useMemo(() => Object.keys(editor.currentTask?.steps ?? {}), [editor.currentTask?.steps]);
+  const taskCommonNames = useMemo(() => Object.keys(editor.currentTask?.common ?? {}), [editor.currentTask?.common]);
 
-  const taskStepKeys = useMemo(() => {
-    const s = editor.currentTask?.steps ?? {};
-    const c = editor.currentTask?.common ?? {};
-    return [...Object.keys(s), ...Object.keys(c)];
-  }, [editor.currentTask?.steps, editor.currentTask?.common]);
+  const allStepNames = useMemo(() => {
+    const owned = new Set([...taskStepNames, ...taskCommonNames]);
+    return [...taskStepNames, ...taskCommonNames, ...globalCommonNames.filter((n) => !owned.has(n))];
+  }, [taskStepNames, taskCommonNames, globalCommonNames]);
 
   const setVars = useMemo(() => {
-    if (!editor.currentTask) return [] as string[];
     const names = new Set<string>();
-    for (const step of Object.values({ ...editor.currentTask.steps, ...editor.currentTask.common }))
-      for (const v of step.set ?? []) if (v.name) names.add(v.name);
+    const collect = (steps: Record<string, Step>) => {
+      for (const step of Object.values(steps))
+        for (const v of step.set ?? []) if (v.name) names.add(v.name);
+    };
+    if (editor.currentTask) {
+      collect(editor.currentTask.steps ?? {});
+      collect(editor.currentTask.common ?? {});
+    }
     return Array.from(names);
   }, [editor.currentTask]);
 
@@ -183,35 +183,40 @@ const TaskEditorPage: FC = () => {
     for (const k of configKeys) opts.push({ value: `{CONFIG.${k}}`, label: `{CONFIG.${k}} — 全局设置` });
     for (const k of taskValueKeys) opts.push({ value: `{${k}}`, label: `{${k}} — 任务配置` });
     for (const v of setVars) opts.push({ value: `{${v}}`, label: `{${v}} — set 变量` });
-    const s = editor.currentTask?.steps ?? {};
-    const c = editor.currentTask?.common ?? {};
-    const allSteps = { ...s, ...c };
-    for (const k of stepKeys) {
-      const isGlobal = globalCommonNames.includes(k) && !s[k] && !c[k];
-      const desc = allSteps[k]?.description;
+    const steps = editor.currentTask?.steps ?? {};
+    const common = editor.currentTask?.common ?? {};
+    for (const k of allStepNames) {
+      const isGlobal = !steps[k] && !common[k];
+      const source = steps[k] ?? common[k];
       const suffix = isGlobal ? "公共步骤" : "步骤";
-      opts.push({ value: k, label: desc ? `${k} — ${desc} — ${suffix}` : `${k} — ${suffix}` });
+      opts.push({ value: k, label: source?.description ? `${k} — ${source.description} — ${suffix}` : `${k} — ${suffix}` });
     }
     return opts;
-  }, [configKeys, taskValueKeys, setVars, stepKeys, globalCommonNames, editor.currentTask]);
+  }, [configKeys, taskValueKeys, setVars, allStepNames, editor.currentTask]);
 
   /** 从 args 图片名中提取 {参数名:默认值} 模板参数 */
   const stepParamsMap = useMemo(() => {
     const m: Record<string, Record<string, unknown>> = {};
-    for (const [name, s] of Object.entries({ ...editor.currentTask?.steps, ...editor.currentTask?.common })) {
-      const args = (s.params?.args as string[]) ?? [];
-      const extracted: Record<string, unknown> = {};
-      for (const arg of args) {
-        for (const match of arg.matchAll(/\{(\w+):([^}]*)\}/g)) {
-          extracted[match[1]] = match[2];
+    const extract = (entries: [string, Step][]) => {
+      for (const [name, s] of entries) {
+        const args = (s.params?.args as string[]) ?? [];
+        const extracted: Record<string, unknown> = {};
+        for (const arg of args) {
+          for (const match of arg.matchAll(/\{(\w+):([^}]*)\}/g)) {
+            extracted[match[1]] = match[2];
+          }
         }
+        if (Object.keys(extracted).length > 0) m[name] = extracted;
       }
-      if (Object.keys(extracted).length > 0) m[name] = extracted;
+    };
+    if (editor.currentTask) {
+      extract(Object.entries(editor.currentTask.steps ?? {}));
+      extract(Object.entries(editor.currentTask.common ?? {}));
     }
     return m;
   }, [editor.currentTask?.steps, editor.currentTask?.common]);
 
-  const ctx: EditorCtx = { stepKeys, variableOptions, stepParamsMap, hwnd: characterStore.selectedHwnd };
+  const ctx: EditorCtx = { stepKeys: allStepNames, variableOptions, stepParamsMap, hwnd: characterStore.selectedHwnd };
 
   const drawerData = drawerStep && editor.currentTask
     ? (editor.currentTask[drawerStep.isCommon ? "common" : "steps"] as Record<string, Step>)?.[drawerStep.name] : null;
@@ -437,7 +442,7 @@ const TaskEditorPage: FC = () => {
           )}
         </div>
         <VariablePanel taskValues={editor.currentTask?.values ?? {}} configKeys={configKeys}
-          stepNames={stepKeys} setVariables={setVars}
+          stepNames={allStepNames} setVariables={setVars}
           visible={varVisible} onToggle={() => setVarVisible(false)} />
       </div>
 
@@ -485,7 +490,7 @@ const TaskEditorPage: FC = () => {
                   <span className="text-[11px] font-medium text-[#8b8fa3]">起始步骤</span>
                   <Select className="w-full" size="small" placeholder="选择第一个执行的步骤" allowClear
                     value={editor.currentTask!.start || undefined}
-                    options={taskStepKeys.map((k) => ({ value: k, label: k }))}
+                    options={[...taskStepNames, ...taskCommonNames].map((k) => ({ value: k, label: k }))}
                     onChange={(v) => editor.updateStart(v ?? "")} />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -515,7 +520,7 @@ const TaskEditorPage: FC = () => {
                 </div>
                 <LoopStepEditor
                   steps={editor.currentTask.monitors.loop ?? []}
-                  available={stepKeys}
+                  available={allStepNames}
                   onChange={(loop) => editor.updateMonitors({ ...editor.currentTask!.monitors, loop })}
                 />
               </div>

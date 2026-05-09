@@ -89,28 +89,28 @@ const FlowEditor: FC<Props> = ({
       {menu && (
         <>
           <div className="fixed inset-0 z-50" onClick={() => setMenu(null)} />
-          <div className="absolute z-50 bg-white rounded-xl shadow-lg border border-[#e8eaed] py-1 min-w-[164px] overflow-hidden"
+          <div className="absolute z-50 bg-white rounded-xl shadow-lg border border-[#eef0f2] py-1 min-w-[180px] overflow-hidden"
             style={{ left: menu.x, top: menu.y }}>
-            <div className="flex items-center gap-2.5 px-4 py-2.5 cursor-pointer hover:bg-[#f6f8fb] transition-colors"
+            <button className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#f5f7fa] transition-colors text-left"
               onClick={() => { onCreateStep(menu.x, menu.y, false); setMenu(null); }}>
               <div className="w-7 h-7 rounded-lg bg-[#eef2ff] flex items-center justify-center shrink-0">
-                <span className="text-[13px] text-[#3b82f6]">+</span>
+                <span className="text-[13px] text-[#1677ff]">+</span>
               </div>
               <div>
                 <div className="text-[13px] font-medium text-[#1a1a2e] leading-tight">普通步骤</div>
-                <div className="text-[10px] text-[#9ca3af] leading-tight">添加一个任务步骤</div>
+                <div className="text-[10px] text-[#8b8fa3] leading-tight">添加一个任务步骤</div>
               </div>
-            </div>
-            <div className="flex items-center gap-2.5 px-4 py-2.5 cursor-pointer hover:bg-[#f6f8fb] transition-colors"
+            </button>
+            <button className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#f5f7fa] transition-colors text-left"
               onClick={() => { onCreateStep(menu.x, menu.y, true); setMenu(null); }}>
               <div className="w-7 h-7 rounded-lg bg-[#fff7e6] flex items-center justify-center shrink-0">
-                <span className="text-[13px] text-[#fa8c16]">+</span>
+                <span className="text-[13px] text-[#f59e0b]">+</span>
               </div>
               <div>
                 <div className="text-[13px] font-medium text-[#1a1a2e] leading-tight">公共步骤</div>
-                <div className="text-[10px] text-[#9ca3af] leading-tight">覆盖全局公共步骤</div>
+                <div className="text-[10px] text-[#8b8fa3] leading-tight">覆盖全局公共步骤</div>
               </div>
-            </div>
+            </button>
           </div>
         </>
       )}
