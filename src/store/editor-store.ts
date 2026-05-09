@@ -41,15 +41,16 @@ export const useEditorStore = create<EditorState>()(
       viewMode: "json",
 
       loadTask: async (taskId) => {
-        set({ loading: true });
+        set({ loading: true, isDirty: false });
         try {
           const task = await window.pywebview?.api.emit(
             "API:TASK:LOAD:FULL",
             taskId
           );
           set({ currentTask: task ?? null, isDirty: false, loading: false });
+          useEditorStore.temporal.getState().clear();
         } catch {
-          set({ loading: false });
+          set({ loading: false, currentTask: null, isDirty: false });
         }
       },
 
@@ -144,14 +145,11 @@ export const useEditorStore = create<EditorState>()(
     }),
     {
       name: "editor-draft",
-      partialize: (state) => ({
-        currentTask: state.currentTask,
-        isDirty: state.isDirty,
-      }),
+      partialize: (state) => state.isDirty ? { currentTask: state.currentTask } : { currentTask: null },
     }
   ),
   {
     partialize: (state: EditorState) => ({ currentTask: state.currentTask }),
     limit: 50,
-  }
+  })
 );

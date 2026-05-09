@@ -229,7 +229,7 @@ const TaskEditorPage: FC = () => {
 
   // effects
   useEffect(() => {
-    if (!restorePromptedRef.current && editor.currentTask && editor.isDirty) {
+    if (!restorePromptedRef.current && editor.currentTask) {
       restorePromptedRef.current = true;
       Modal.confirm({
         title: "检测到未保存的草稿",
@@ -298,7 +298,7 @@ const TaskEditorPage: FC = () => {
   const handleSave = async () => {
     if (editor.currentTask) {
       const updated = flowToTask(flowNodes, flowEdges, editor.currentTask);
-      useEditorStore.setState({ currentTask: updated, isDirty: true });
+      useEditorStore.setState({ currentTask: updated });
     }
     await editor.saveTask();
     if (editor.currentTask) {
