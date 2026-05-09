@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, type FC } from "react";
-import { Button, Input, message, Modal, Select, Spin } from "antd";
+import { Button, Input, message, Modal, Spin } from "antd";
 import { useResponsiveStore } from "@/store/responsive-store";
 import {
   ScissorOutlined, LoadingOutlined, ZoomInOutlined, ZoomOutOutlined, DragOutlined, HighlightOutlined,
@@ -13,7 +13,7 @@ import {
    ============================================================ */
 
 interface Props { open: boolean; hwnd: string; taskName?: string; version?: string;
-  onClose: () => void; onSaved: (filename: string, scope: string) => void; }
+  onClose: () => void; onSaved: (filename: string) => void; }
 interface CaptureResult { base64: string; width: number; height: number; }
 interface CropRect { x: number; y: number; w: number; h: number; }
 type Corner = "nw" | "ne" | "sw" | "se";
@@ -194,21 +194,29 @@ const CropOverlay: FC<{ crop: CropRect; zoom: number; canvasW: number; canvasH: 
 // ---- Save confirm modal ----
 
 const SaveModal: FC<{
-  open: boolean; saving: boolean; filename: string; scope: "global" | "task";
-  hasTask: boolean; crop: CropRect | null;
-  onFilename: (v: string) => void; onScope: (v: "global" | "task") => void;
-  onOk: () => void; onCancel: () => void;
-}> = ({ open, saving, filename, scope, hasTask, crop, onFilename, onScope, onOk, onCancel }) => (
-  <Modal title="保存模板图片" open={open} onOk={onOk} onCancel={onCancel}
-    okText="保存" cancelText="取消" confirmLoading={saving} okButtonProps={{ disabled: !filename.trim() }}>
-    <div className="flex flex-col gap-4 pt-2">
-      <div className="flex items-center gap-2"><span className="text-sm w-16 shrink-0">文件名</span>
-        <Input placeholder="模板图片名" value={filename} onChange={e => onFilename(e.target.value)}
-          suffix={<span className="text-[10px] text-[#8b8fa3]">.bmp</span>} /></div>
-      <div className="flex items-center gap-2"><span className="text-sm w-16 shrink-0">保存到</span>
-        <Select style={{ width: 150 }} value={scope} onChange={onScope}
-          options={[...(hasTask ? [{ value: "task", label: "本任务" }] : []), { value: "global", label: "全局" }]} /></div>
-      {crop && <div className="text-xs text-[#8b8fa3]">选区大小：{Math.round(crop.w)} × {Math.round(crop.h)} 像素</div>}
+  open: boolean; saving: boolean; filename: string; crop: CropRect | null;
+  onFilename: (v: string) => void; onOk: () => void; onCancel: () => void;
+}> = ({ open, saving, filename, crop, onFilename, onOk, onCancel }) => (
+  <Modal title={<span className="text-sm font-semibold text-[#1a1a2e]">保存模板图片</span>}
+    open={open} onOk={onOk} onCancel={onCancel} centered
+    okText="保存" cancelText="取消" confirmLoading={saving}
+    okButtonProps={{ disabled: !filename.trim() }}
+    width={400}
+  >
+    <div className="flex flex-col gap-4 pt-1">
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-medium text-[#6b7280]">文件名</span>
+        <Input placeholder="输入模板图片名" value={filename}
+          onChange={e => onFilename(e.target.value)}
+          suffix={<span className="text-[10px] text-[#9ca3af]">.bmp</span>}
+          className="!text-sm" />
+      </div>
+      {crop && (
+        <div className="flex items-center gap-3 px-3 py-2.5 bg-[#f8f9fb] rounded-lg border border-[#eef0f2]">
+          <span className="text-[11px] text-[#8b8fa3]">选区尺寸</span>
+          <span className="text-xs font-medium text-[#1a1a2e]">{Math.round(crop.w)} × {Math.round(crop.h)} px</span>
+        </div>
+      )}
     </div>
   </Modal>
 );
@@ -222,7 +230,6 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
   const [crop, setCrop] = useState<CropRect | null>(null);
   const [zoom, setZoom] = useState(1);
   const [filename, setFilename] = useState("");
-  const [scope, setScope] = useState<"global" | "task">("task");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [tool, setTool] = useState<"select" | "pan">("select");
   const [hoverCursor, setHoverCursor] = useState("crosshair");
@@ -472,15 +479,13 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
     try {
       await window.pywebview?.api.emit("API:TEMPLATE:SAVE", hwnd,
         [Math.round(crop.x), Math.round(crop.y), Math.round(crop.x + crop.w), Math.round(crop.y + crop.h)],
-        filename.trim(), scope, scope === "task" ? taskName : null, scope === "task" ? version : null);
+        filename.trim(), "task", taskName, version);
       message.success(`已保存: ${filename}.bmp`);
-      onSaved(filename.trim(), scope);
+      onSaved(filename.trim());
       setConfirmOpen(false); onClose();
     } catch (e: unknown) { message.error(e instanceof Error ? e.message : "保存失败"); }
     finally { setSaving(false); }
   };
-
-  const hasTask = !!(taskName && version);
 
   return (
     <>
@@ -535,8 +540,8 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
         </Spin>
       </Modal>
 
-      <SaveModal open={confirmOpen} saving={saving} filename={filename} scope={scope}
-        hasTask={hasTask} crop={crop} onFilename={setFilename} onScope={setScope}
+      <SaveModal open={confirmOpen} saving={saving} filename={filename}
+        crop={crop} onFilename={setFilename}
         onOk={handleConfirm} onCancel={() => setConfirmOpen(false)} />
     </>
   );
