@@ -21,12 +21,13 @@ interface Props {
   onConnect: (conn: Connection) => void;
   onNodeClick: (nodeId: string) => void;
   onCreateStep: (x: number, y: number, isCommon: boolean) => void;
+  onNodesDelete?: (ids: string[]) => void;
 }
 
 const nodeTypes = { stepNode: StepNode };
 
 const FlowEditor: FC<Props> = ({
-  nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeClick, onCreateStep,
+  nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeClick, onCreateStep, onNodesDelete,
 }) => {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const rfRef = useRef<HTMLDivElement>(null);
@@ -79,6 +80,8 @@ const FlowEditor: FC<Props> = ({
         onPaneContextMenu={handlePaneContextMenu}
         nodeTypes={nodeTypes as any}
         defaultEdgeOptions={defaultEdgeOptions}
+        deleteKeyCode={["Backspace", "Delete"]}
+        onNodesDelete={(deleted) => onNodesDelete?.(deleted.map((n) => n.id))}
         fitView panOnDrag selectNodesOnDrag nodesDraggable nodesConnectable elementsSelectable
         attributionPosition="bottom-left"
       >

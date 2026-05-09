@@ -414,6 +414,13 @@ const TaskEditorPage: FC = () => {
             onNodesChange={(ns) => { setFlowNodes(ns); editor.setDirty(true); }}
             onEdgesChange={(es) => { setFlowEdges(es); editor.setDirty(true); }}
             onConnect={() => editor.setDirty(true)}
+            onNodesDelete={(ids) => {
+              ids.forEach((id) => {
+                const isCommon = id in (editor.currentTask?.common ?? {});
+                editor.removeStep(id, isCommon);
+              });
+              if (drawerStep && ids.includes(drawerStep.name)) setDrawerStep(null);
+            }}
             onNodeClick={(nodeId) => setDrawerStep({ name: nodeId, isCommon: nodeId in (editor.currentTask?.common ?? {}) })}
             onCreateStep={(x, y, isCommon) => {
               const name = `步骤_${Date.now()}`;
