@@ -1,0 +1,121 @@
+import { useState, useMemo, useCallback, useRef, type FC } from "react";
+import {
+  ReactFlow, Background, Controls,
+  applyNodeChanges, applyEdgeChanges,
+  type Node, type Edge, type Connection, type NodeChange, type EdgeChange,
+  MarkerType,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import StepNode from "./StepNode";
+import type { StepNodeData, StepEdgeData } from "@/types/flow";
+import type { Step } from "@/types/task";
+
+type FullTaskLike = { id: string; name: string; steps: Record<string, Step>; common: Record<string, Step>; start: string; };
+
+interface Props {
+  task: FullTaskLike;
+  nodes: Node<StepNodeData>[];
+  edges: Edge<StepEdgeData>[];
+  onNodesChange: (nodes: Node<StepNodeData>[]) => void;
+  onEdgesChange: (edges: Edge<StepEdgeData>[]) => void;
+  onConnect: (conn: Connection) => void;
+  onNodeClick: (nodeId: string) => void;
+  onCreateStep: (x: number, y: number, isCommon: boolean) => void;
+}
+
+const nodeTypes = { stepNode: StepNode };
+
+const FlowEditor: FC<Props> = ({
+  nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeClick, onCreateStep,
+}) => {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const rfRef = useRef<HTMLDivElement>(null);
+
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => { onNodesChange(applyNodeChanges(changes, nodes) as Node<StepNodeData>[]); },
+    [nodes, onNodesChange],
+  );
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => { onEdgesChange(applyEdgeChanges(changes, edges) as Edge<StepEdgeData>[]); },
+    [edges, onEdgesChange],
+  );
+  const handleConnect = useCallback(
+    (conn: Connection) => {
+      if (!conn.source || !conn.target) return;
+      const ft = (conn.sourceHandle ?? "next") as "success" | "failure" | "next";
+      const filtered = edges.filter((e) => !(e.source === conn.source && e.data?.flowType === ft));
+      const newEdge: Edge<StepEdgeData> = {
+        id: `${conn.source}-${ft}-${conn.target}`, source: conn.source, target: conn.target,
+        sourceHandle: conn.sourceHandle, type: "smoothstep", data: { flowType: ft },
+        style: { stroke: ft === "success" ? "#52c41a" : ft === "failure" ? "#ff4d4f" : "#8b8fa3", strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed },
+      };
+      filtered.push(newEdge);
+      onEdgesChange(filtered);
+    },
+    [edges, onEdgesChange],
+  );
+
+  const defaultEdgeOptions = useMemo(() => ({
+    type: "smoothstep" as const,
+    style: { stroke: "#8b8fa3", strokeWidth: 2 },
+    markerEnd: { type: MarkerType.ArrowClosed as const },
+  }), []);
+
+  const handlePaneContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!rfRef.current) return;
+    const rect = rfRef.current.getBoundingClientRect();
+    setMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }, []);
+
+  return (
+    <div ref={rfRef} style={{ width: "100%", height: "100%", position: "relative" }}>
+      <ReactFlow
+        nodes={nodes} edges={edges}
+        onNodesChange={handleNodesChange} onEdgesChange={handleEdgesChange}
+        onConnect={handleConnect}
+        onNodeClick={(_, node) => onNodeClick(node.id)}
+        onPaneContextMenu={handlePaneContextMenu}
+        nodeTypes={nodeTypes as any}
+        defaultEdgeOptions={defaultEdgeOptions}
+        fitView panOnDrag selectNodesOnDrag nodesDraggable nodesConnectable elementsSelectable
+        attributionPosition="bottom-left"
+      >
+        <Background /><Controls />
+      </ReactFlow>
+
+      {/* Context menu */}
+      {menu && (
+        <>
+          <div className="fixed inset-0 z-50" onClick={() => setMenu(null)} />
+          <div className="absolute z-50 bg-white rounded-xl shadow-lg border border-[#e8eaed] py-1 min-w-[164px] overflow-hidden"
+            style={{ left: menu.x, top: menu.y }}>
+            <div className="flex items-center gap-2.5 px-4 py-2.5 cursor-pointer hover:bg-[#f6f8fb] transition-colors"
+              onClick={() => { onCreateStep(menu.x, menu.y, false); setMenu(null); }}>
+              <div className="w-7 h-7 rounded-lg bg-[#eef2ff] flex items-center justify-center shrink-0">
+                <span className="text-[13px] text-[#3b82f6]">+</span>
+              </div>
+              <div>
+                <div className="text-[13px] font-medium text-[#1a1a2e] leading-tight">普通步骤</div>
+                <div className="text-[10px] text-[#9ca3af] leading-tight">添加一个任务步骤</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 px-4 py-2.5 cursor-pointer hover:bg-[#f6f8fb] transition-colors"
+              onClick={() => { onCreateStep(menu.x, menu.y, true); setMenu(null); }}>
+              <div className="w-7 h-7 rounded-lg bg-[#fff7e6] flex items-center justify-center shrink-0">
+                <span className="text-[13px] text-[#fa8c16]">+</span>
+              </div>
+              <div>
+                <div className="text-[13px] font-medium text-[#1a1a2e] leading-tight">公共步骤</div>
+                <div className="text-[10px] text-[#9ca3af] leading-tight">覆盖全局公共步骤</div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default FlowEditor;

@@ -10,7 +10,7 @@ const SettingsPage: FC = () => {
   const updateValue = useSettingsStore((s) => s.updateValue);
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg m-x-4 p-xy m-b-4 shadow-md">
+    <div className="flex flex-col h-full bg-white rounded-lg mx-4 mb-4 p-4 shadow-sm">
       <div className="flex items-center gap-2 h-40px shrink-0">
         <SettingOutlined className="text-lg" />
         <span className="text-lg font-bold text-[#1a1a2e]">全局设置</span>

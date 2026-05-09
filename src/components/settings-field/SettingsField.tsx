@@ -12,6 +12,8 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import type { Cell } from "@/types/task";
+import type { AutocompleteType } from "@/components/autocomplete-input/AutocompleteInput";
+import AutocompleteInput from "@/components/autocomplete-input/AutocompleteInput";
 import KeyInput from "./components/KeyInput";
 
 interface Props {
@@ -251,6 +253,85 @@ const SettingsField: FC<Props> = ({ cell, value, onChange }) => {
           <KeyInput
             value={value as string}
             onChange={(v) => onChange(v)}
+          />
+        </div>
+      );
+
+    case "el-autocomplete-action":
+      return (
+        <div className="flex items-center gap-2">
+          {label}
+          <AutocompleteInput
+            type="action"
+            value={value as string}
+            onChange={onChange}
+            placeholder={cell.placeholder ?? "选择或输入 action"}
+            disabled={cell.disabled}
+            allowClear={cell.allowClear}
+          />
+        </div>
+      );
+
+    case "el-autocomplete-template":
+      return (
+        <div className="flex items-center gap-2">
+          {label}
+          <AutocompleteInput
+            type="template"
+            value={value as string}
+            onChange={onChange}
+            context={cell.autocompleteContext}
+            placeholder={cell.placeholder ?? "选择或输入模板图片名"}
+            disabled={cell.disabled}
+            allowClear={cell.allowClear}
+          />
+        </div>
+      );
+
+    case "el-autocomplete-step":
+      return (
+        <div className="flex items-center gap-2">
+          {label}
+          <AutocompleteInput
+            type="step"
+            value={value as string}
+            onChange={onChange}
+            context={cell.autocompleteContext}
+            placeholder={cell.placeholder ?? "选择或输入步骤名"}
+            disabled={cell.disabled}
+            allowClear={cell.allowClear}
+          />
+        </div>
+      );
+
+    case "el-autocomplete-variable":
+      return (
+        <div className="flex items-center gap-2">
+          {label}
+          <AutocompleteInput
+            type="variable"
+            value={value as string}
+            onChange={onChange}
+            context={cell.autocompleteContext}
+            placeholder={cell.placeholder ?? "选择或输入变量"}
+            disabled={cell.disabled}
+            allowClear={cell.allowClear}
+          />
+        </div>
+      );
+
+    case "el-autocomplete-subflow":
+      return (
+        <div className="flex items-center gap-2">
+          {label}
+          <AutocompleteInput
+            type="subflow"
+            value={value as string}
+            onChange={onChange}
+            context={cell.autocompleteContext}
+            placeholder={cell.placeholder ?? "选择或输入子流程名"}
+            disabled={cell.disabled}
+            allowClear={cell.allowClear}
           />
         </div>
       );

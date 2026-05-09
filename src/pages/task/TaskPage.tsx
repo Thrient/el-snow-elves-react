@@ -104,7 +104,7 @@ const TaskPage: FC = () => {
   ]
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg m-x-4 p-xy m-b-4 shadow-md">
+    <div className="flex flex-col h-full bg-white rounded-lg mx-4 mb-4 p-4 shadow-sm">
       <div className="flex justify-between items-center h-40px shrink-0">
         <span className="text-lg font-bold text-[#1a1a2e]">
           <ProfileOutlined className="mr-2"/>任务管理

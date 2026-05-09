@@ -106,7 +106,7 @@ const WindowsPage: FC = () => {
 
   return (
     <>
-      <div className="flex flex-col h-[calc(100%-48px)] bg-white rounded-lg m-x-4 p-xy m-b-4 shadow-md ">
+      <div className="flex flex-col h-[calc(100%-48px)] bg-white rounded-lg mx-4 mb-4 p-4 shadow-sm">
         {/* Top bar */}
         <div className="flex justify-between items-center h-40px shrink-0">
           <span className="text-lg font-bold text-[#1a1a2e]">
@@ -323,7 +323,7 @@ const WindowsPage: FC = () => {
                           onDragEnd={handleDragEnd}
                           onDragOver={handleDragOver}
                           onDrop={handleDrop(item._uid)}
-                          className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white border border-[#f0f0f0] hover:border-[#e0e2e6] hover:shadow-sm transition-all group cursor-grab active:cursor-grabbing"
+                          className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white border border-[var(--color-border)] hover:border-[#dde0e6] hover:shadow-sm transition-all group cursor-grab active:cursor-grabbing"
                           style={{
                             opacity: dragUid === item._uid ? 0.4 : 1,
                           }}
@@ -339,7 +339,7 @@ const WindowsPage: FC = () => {
                                   ],
                               }}
                             />
-                            <span className="text-xs text-[#2d2d3a] truncate">{item.name}</span>
+                            <span className="text-xs text-[#1a1a2e] truncate">{item.name}</span>
                             <Tag className="text-[10px] leading-none border-none rounded-sm px-1 py-0.5 m-0 text-[#999] bg-[#f5f5f5]">
                               v{item.version}
                             </Tag>

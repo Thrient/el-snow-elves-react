@@ -12,10 +12,24 @@ export type CellModel =
   | 'el-slider'
   | 'el-date-picker'
   | 'el-color-picker'
+  | 'el-autocomplete-action'
+  | 'el-autocomplete-template'
+  | 'el-autocomplete-step'
+  | 'el-autocomplete-variable'
+  | 'el-autocomplete-subflow'
 
 export type CellOption = {
   label: string
   value: string | number
+}
+
+export type AutocompleteContext = {
+  taskName?: string
+  version?: string
+  taskId?: string
+  steps?: string[]
+  common?: string[]
+  variables?: string[]
 }
 
 export type Cell = {
@@ -64,6 +78,8 @@ export type Cell = {
   showTime?: boolean
   // ColorPicker
   showText?: boolean
+  // Autocomplete
+  autocompleteContext?: AutocompleteContext
 }
 
 export type Task = {
@@ -74,4 +90,59 @@ export type Task = {
   author: string
   values: Record<string, unknown>
   layout: Cell[][]
+}
+
+// --- Full task types (with steps/common/monitors/start) ---
+
+export interface SubflowRef {
+  step: string
+  args?: Record<string, unknown>
+  when?: string
+}
+
+export interface StepRetry {
+  times: number
+  interval: number
+}
+
+export interface Step {
+  action?: string
+  description?: string
+  params?: Record<string, unknown>
+  prefix?: (string | SubflowRef)[]
+  postfix?: (string | SubflowRef)[]
+  failure_extra?: (string | SubflowRef)[]
+  success_extra?: (string | SubflowRef)[]
+  success?: string
+  failure?: string
+  next?: string
+  extends?: string
+  retry?: StepRetry
+  set?: { name: string; value: unknown }[]
+}
+
+export interface MonitorConfig {
+  loop?: string[]
+  interval?: number
+}
+
+export interface FullTask {
+  id: string
+  name: string
+  description: string
+  version: string
+  author: string
+  start: string
+  values: Record<string, unknown>
+  layout: Cell[][]
+  steps: Record<string, Step>
+  common: Record<string, Step>
+  monitors: MonitorConfig
+}
+
+export interface Suggestion {
+  label: string
+  value: string
+  type: 'action' | 'template' | 'step' | 'variable' | 'subflow'
+  description?: string
 }

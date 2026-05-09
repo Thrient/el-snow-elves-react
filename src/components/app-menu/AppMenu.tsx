@@ -3,6 +3,7 @@ import "@/components/app-menu/index.css"
 import { useNavigate } from 'react-router-dom'
 import { Menu, Typography } from "antd";
 import {
+  CodeOutlined,
   DesktopOutlined,
   ProfileOutlined,
   SettingOutlined,
@@ -33,6 +34,11 @@ const AppMenu: FC<Props> = ({ collapsed }) => {
       label: '任务管理',
     },
     {
+      key: '/task-editor',
+      icon: <CodeOutlined/>,
+      label: '任务编辑',
+    },
+    {
       key: '/settings',
       icon: <SettingOutlined/>,
       label: '全局设置',
@@ -55,7 +61,7 @@ const AppMenu: FC<Props> = ({ collapsed }) => {
         {collapsed ? (
           <img src="/snowman.svg" className="h-32px w-32px" alt=""/>
         ) : (
-          <Title level={4} className="![color:#1890ff]  m-x-0px m-y-0px">
+          <Title level={4} className="![color:#1677ff] m-0">
             Elves Snow
           </Title>
         )}

@@ -212,12 +212,12 @@ const FloatingPanel: FC = () => {
         </div>
       ) : (
         <div
-          className="fixed z-[1000] bg-[#f8f9fb] rounded-2xl shadow-2xl border border-[#f0f0f0] select-none overflow-hidden"
+          className="fixed z-[1000] bg-[var(--color-bg-container)] rounded-2xl shadow-2xl border border-[var(--color-border)] select-none overflow-hidden"
           style={{ left: position.x, top: position.y, width: PANEL_WIDTH }}
         >
           {/* Header */}
           <div
-            className="flex items-center justify-between px-5 py-3.5 cursor-move bg-white/80 backdrop-blur-sm border-b border-[#f0f0f0]"
+            className="flex items-center justify-between px-5 py-3.5 cursor-move bg-white/80 backdrop-blur-sm border-b border-[var(--color-border)]"
             onMouseDown={handleMouseDown}
           >
             <div className="flex items-center gap-2">
@@ -274,7 +274,7 @@ const FloatingPanel: FC = () => {
                           className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                           style={{ backgroundColor: ["#1677ff", "#52c41a", "#fa8c16", "#722ed1", "#13c2c2"][index % 5] }}
                         />
-                        <span className="text-xs font-medium text-[#2d2d3a] truncate leading-normal">
+                        <span className="text-xs font-medium text-[#1a1a2e] truncate leading-normal">
                           {item.name}
                         </span>
                       </div>

@@ -147,8 +147,8 @@ const DocsPage: FC = () => {
   return (
     <div className="flex h-full bg-white">
       {/* ======= 左侧导航 ======= */}
-      <aside className="w-[220px] flex-shrink-0 border-r border-[#f0f0f0] flex flex-col bg-[#fafbfc]">
-        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-[#f0f0f0]">
+      <aside className="w-[220px] flex-shrink-0 border-r border-[var(--color-border)] flex flex-col bg-[var(--color-bg-container)]">
+        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-[var(--color-border)]">
           <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#1677ff] text-white">
             <BookOutlined className="text-sm" />
           </span>
@@ -170,7 +170,7 @@ const DocsPage: FC = () => {
                   transition-colors duration-150 select-none
                   ${isActive
                     ? "bg-[#e6f4ff] text-[#1677ff] font-medium"
-                    : "text-[#555] hover:bg-[#f0f0f0] hover:text-[#1a1a2e]"
+                    : "text-[#6b7280] hover:bg-[var(--color-bg-hover)] hover:text-[#1a1a2e]"
                   }
                 `}
               >
