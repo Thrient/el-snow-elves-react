@@ -27,7 +27,7 @@ const HANDLE_VISUAL = 12;
 const MIN_CROP = 8;
 const VP_W = 720;
 const VP_H = 480;
-const MATCH_THRESHOLD = 0.8;
+const MATCH_THRESHOLD = 0.85;
 
 const CORNERS: { corner: Corner; cursor: string }[] = [
   { corner: "nw", cursor: "nwse-resize" },
