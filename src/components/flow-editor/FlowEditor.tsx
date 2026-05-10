@@ -72,8 +72,9 @@ const FlowEditor: FC<Props> = ({
   }, []);
 
   const handleCreateStep = (isCommon: boolean) => {
-    if (!menu || !rfInstance.current) return;
-    const pos = rfInstance.current.screenToFlowPosition({ x: menu.x, y: menu.y });
+    if (!menu || !rfInstance.current || !rfRef.current) return;
+    const rect = rfRef.current.getBoundingClientRect();
+    const pos = rfInstance.current.screenToFlowPosition({ x: menu.x + rect.left, y: menu.y + rect.top });
     onCreateStep(pos.x, pos.y, isCommon);
     setMenu(null);
   };
