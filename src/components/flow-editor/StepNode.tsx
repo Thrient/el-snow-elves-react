@@ -3,6 +3,12 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { StepNodeData } from "@/types/flow";
 import { PlayCircleOutlined } from "@ant-design/icons";
 
+const HANDLE_LEFT: Record<string, number> = {
+  success: 0.20,
+  failure: 0.50,
+  next:    0.80,
+};
+
 const StepNode: FC<NodeProps & { data: StepNodeData }> = ({ data, selected }) => {
   const { stepName, action, isCommon, isStart } = data;
   const label = typeof stepName === "string" ? stepName : "";
@@ -37,19 +43,19 @@ const StepNode: FC<NodeProps & { data: StepNodeData }> = ({ data, selected }) =>
         )}
       </div>
 
-      {/* Handle labels */}
-      <div className="flex justify-between px-1">
+      {/* Handle labels — spread to match handle offset positions */}
+      <div className="flex justify-between px-1" style={{ paddingLeft: "8%", paddingRight: "8%" }}>
         <span className="text-[8px] text-[#52c41a] font-medium">成功</span>
         <span className="text-[8px] text-[#ff4d4f] font-medium">失败</span>
         <span className="text-[8px] text-[#8b8fa3] font-medium">下步</span>
       </div>
 
       <Handle type="source" position={Position.Bottom} id="success"
-        style={{ left: "15%", width: 9, height: 9, background: "#52c41a", border: "2px solid #fff" }} />
+        style={{ left: `${HANDLE_LEFT.success * 100}%`, width: 9, height: 9, background: "#52c41a", border: "2px solid #fff" }} />
       <Handle type="source" position={Position.Bottom} id="failure"
-        style={{ left: "50%", width: 9, height: 9, background: "#ff4d4f", border: "2px solid #fff" }} />
+        style={{ left: `${HANDLE_LEFT.failure * 100}%`, width: 9, height: 9, background: "#ff4d4f", border: "2px solid #fff" }} />
       <Handle type="source" position={Position.Bottom} id="next"
-        style={{ left: "85%", width: 9, height: 9, background: "#8b8fa3", border: "2px solid #fff" }} />
+        style={{ left: `${HANDLE_LEFT.next * 100}%`, width: 9, height: 9, background: "#8b8fa3", border: "2px solid #fff" }} />
     </div>
   );
 };

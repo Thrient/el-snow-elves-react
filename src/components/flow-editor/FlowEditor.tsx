@@ -7,6 +7,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import StepNode from "./StepNode";
+import StepEdge from "./StepEdge";
 import type { StepNodeData, StepEdgeData } from "@/types/flow";
 import type { Step } from "@/types/task";
 
@@ -25,6 +26,7 @@ interface Props {
 }
 
 const nodeTypes = { stepNode: StepNode };
+const edgeTypes = { step: StepEdge };
 
 const FlowEditor: FC<Props> = ({
   nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeClick, onCreateStep, onNodesDelete,
@@ -48,7 +50,7 @@ const FlowEditor: FC<Props> = ({
       const filtered = edges.filter((e) => !(e.source === conn.source && e.data?.flowType === ft));
       const newEdge: Edge<StepEdgeData> = {
         id: `${conn.source}-${ft}-${conn.target}`, source: conn.source, target: conn.target,
-        sourceHandle: conn.sourceHandle, type: "smoothstep", data: { flowType: ft },
+        sourceHandle: conn.sourceHandle, targetHandle: conn.targetHandle, type: "step", animated: true, data: { flowType: ft },
         style: { stroke: ft === "success" ? "#52c41a" : ft === "failure" ? "#ff4d4f" : "#8b8fa3", strokeWidth: 2 },
         markerEnd: { type: MarkerType.ArrowClosed },
       };
@@ -59,7 +61,7 @@ const FlowEditor: FC<Props> = ({
   );
 
   const defaultEdgeOptions = useMemo(() => ({
-    type: "smoothstep" as const,
+    type: "step" as const,
     style: { stroke: "#8b8fa3", strokeWidth: 2 },
     markerEnd: { type: MarkerType.ArrowClosed as const },
   }), []);
@@ -88,7 +90,7 @@ const FlowEditor: FC<Props> = ({
         onNodeClick={(_, node) => onNodeClick(node.id)}
         onPaneContextMenu={handlePaneContextMenu}
         onInit={(instance) => { rfInstance.current = instance; }}
-        nodeTypes={nodeTypes as any}
+        nodeTypes={nodeTypes as any} edgeTypes={edgeTypes as any}
         defaultEdgeOptions={defaultEdgeOptions}
         deleteKeyCode={["Backspace", "Delete"]}
         onNodesDelete={(deleted) => onNodesDelete?.(deleted.map((n) => n.id))}

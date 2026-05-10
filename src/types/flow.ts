@@ -63,8 +63,8 @@ export function taskToFlow(task: FullTask, savedPositions?: Record<string, { x: 
         source: name,
         target,
         sourceHandle: flowType,
-        type: "smoothstep",
-        animated: flowType === "success",
+        type: "step",
+        animated: true,
         data: { flowType },
         style: {
           stroke:
