@@ -469,16 +469,35 @@ const TaskEditorPage: FC = () => {
               onClose={() => setDrawerStep(null)}
               onRename={(nn) => {
                 if (!editor.currentTask) return;
+                const oldName = drawerStep.name;
                 const key = drawerStep.isCommon ? "common" : "steps";
                 const steps = { ...editor.currentTask[key] };
-                steps[nn] = steps[drawerStep.name]; delete steps[drawerStep.name];
+                steps[nn] = steps[oldName]; delete steps[oldName];
                 useEditorStore.setState({ currentTask: { ...editor.currentTask, [key]: steps }, isDirty: true });
                 setDrawerStep({ name: nn, isCommon: drawerStep.isCommon });
+                setFlowNodes((prev) => prev.map((n) =>
+                  n.id === oldName ? { ...n, id: nn, data: { ...n.data, stepName: nn } } : n
+                ));
+                setFlowEdges((prev) => prev.map((e) => {
+                  const src = e.source === oldName ? nn : e.source;
+                  const tgt = e.target === oldName ? nn : e.target;
+                  if (src === e.source && tgt === e.target) return e;
+                  const idParts = e.id.split("-");
+                  const newId = idParts.includes(oldName)
+                    ? idParts.map((p) => p === oldName ? nn : p).join("-")
+                    : e.id;
+                  return { ...e, id: newId, source: src, target: tgt };
+                }));
               }}
               onUpdate={(field, value) => {
                 if (!editor.currentTask) return;
                 const key = drawerStep.isCommon ? "common" : "steps";
                 editor.updateStep(drawerStep.name, { ...editor.currentTask[key][drawerStep.name], [field]: value }, drawerStep.isCommon);
+                if (field === "action" || field === "description") {
+                  setFlowNodes((prev) => prev.map((n) =>
+                    n.id === drawerStep.name ? { ...n, data: { ...n.data, [field]: value } } : n
+                  ));
+                }
               }}
               onDelete={() => { editor.removeStep(drawerStep.name, drawerStep.isCommon); setDrawerStep(null); }} />
           )}

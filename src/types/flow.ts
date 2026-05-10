@@ -97,8 +97,8 @@ export function flowToTask(
     const orig = original.steps[key] ?? original.common[key] ?? {};
     const step: Step = {
       ...orig,
-      action: node.data.action ?? orig.action ?? "",
-      description: node.data.description ?? orig.description,
+      action: orig.action ?? node.data.action ?? "",
+      description: orig.description ?? node.data.description,
       success: undefined,
       failure: undefined,
       next: undefined,
