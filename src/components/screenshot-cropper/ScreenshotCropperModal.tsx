@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback, useEffect, type FC } from "react";
-import { Button, Input, InputNumber, message, Modal, Popover, Spin, Switch, Tooltip } from "antd";
+import { Button, Input, message, Modal, Popover, Spin } from "antd";
 import { useResponsiveStore } from "@/store/responsive-store";
 import {
   ScissorOutlined, LoadingOutlined, ZoomInOutlined, ZoomOutOutlined, DragOutlined, HighlightOutlined,
   ExperimentOutlined, SwapOutlined,
 } from "@ant-design/icons";
 import type { PreprocessConfig } from "@/pages/task-editor/PreprocessEditor";
+import PreprocessConfigPanel from "@/components/preprocess-config-panel/PreprocessConfigPanel";
 
 /* ============================================================
    Canvas-based architecture (no CSS transform):
@@ -26,6 +27,7 @@ const HANDLE_VISUAL = 12;
 const MIN_CROP = 8;
 const VP_W = 720;
 const VP_H = 480;
+const MATCH_THRESHOLD = 0.8;
 
 const CORNERS: { corner: Corner; cursor: string }[] = [
   { corner: "nw", cursor: "nwse-resize" },
@@ -488,46 +490,38 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
     if (!cropSnapshot) { message.warning("请先在截图上框选模板区域"); return; }
     if (!hwnd) { message.warning("未选择窗口"); return; }
     const cap = captureRef.current;
-    if (mode === "current" && !cap) { message.warning("请等待截图加载完成"); return; }
+    if (!cap) { message.warning("请等待截图加载完成"); return; }
 
     setPreviewLoading(true);
     try {
-      const args: Record<string, unknown> = {};
+      const args: Record<string, unknown> = {
+        mode,
+        crop: {
+          x: Math.round(cropSnapshot.x), y: Math.round(cropSnapshot.y),
+          w: Math.round(cropSnapshot.w), h: Math.round(cropSnapshot.h),
+        },
+        match_threshold: MATCH_THRESHOLD,
+        base64: cap.base64,
+        width: cap.width,
+        height: cap.height,
+      };
       for (const [k, v] of Object.entries(preprocessCfg)) {
         if (v !== undefined) args[k] = v;
       }
-      args.mode = mode;
-      args.crop = {
-        x: Math.round(cropSnapshot.x),
-        y: Math.round(cropSnapshot.y),
-        w: Math.round(cropSnapshot.w),
-        h: Math.round(cropSnapshot.h),
-      };
-      args.match_threshold = 0.8;
-      if (cap) {
-        args.base64 = cap.base64;
-        args.width = cap.width;
-        args.height = cap.height;
-      }
-      console.log("[PreprocessTest] args:", {
-        mode, crop: args.crop, preprocessCfg,
-        hasBase64: !!cap?.base64,
-      });
+
       const res = await window.pywebview?.api.emit("API:PREPROCESS:APPLY", hwnd, args);
-      console.log("[PreprocessTest] result:", res);
-      if (res && res.base64) {
-        const matchCount = res.matches?.length ?? 0;
+      if (res?.base64) {
+        const matchCount: number = res.matches?.length ?? 0;
         setPreviewImage(res);
         setShowPreview(true);
         setPreprocessOpen(false);
         message.success(matchCount > 0
-          ? `找到 ${matchCount} 个匹配点（绿色≥0.95，橙色≥0.9，红色≥${args.match_threshold}）`
+          ? `找到 ${matchCount} 个匹配点（绿色≥0.95，橙色≥0.9，红色≥${MATCH_THRESHOLD}）`
           : "预处理完成，未找到匹配点，点击切换对比");
       } else {
-        message.error(`返回无效: ${JSON.stringify(res)}`);
+        message.error(res?.error ? `预处理失败: ${res.error}` : "后端返回无效，请检查后端日志");
       }
     } catch (e: unknown) {
-      console.error("[PreprocessTest] error:", e);
       message.error(e instanceof Error ? e.message : "预处理测试失败");
     } finally {
       setPreviewLoading(false);
@@ -594,47 +588,7 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
                         <div className="text-[10px] text-[#8b8fa3] mb-2 leading-tight">
                           用框选区域作为匹配模板
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] text-[#374151] cursor-help" title="将灰度图转为纯黑白，0 时自动用 OTSU">二值化</span>
-                            <Switch size="small" checked={preprocessCfg.binarize ?? false}
-                              onChange={(v) => setPreprocessCfg(p => ({ ...p, binarize: v || undefined }))} />
-                          </div>
-                          {preprocessCfg.binarize && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] text-[#8b8fa3] ml-4">阈值</span>
-                              <InputNumber size="small" min={0} max={255} step={5} style={{ width: 72 }}
-                                value={preprocessCfg.binarize_threshold ?? 0}
-                                onChange={(v) => setPreprocessCfg(p => ({ ...p, binarize_threshold: v === 0 ? undefined : v ?? undefined }))} />
-                            </div>
-                          )}
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] text-[#374151] cursor-help" title="黑变白、白变黑">反转颜色</span>
-                            <Switch size="small" checked={preprocessCfg.binarize_invert ?? false}
-                              onChange={(v) => setPreprocessCfg(p => ({ ...p, binarize_invert: v || undefined }))} />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] text-[#374151] cursor-help" title="分块独立计算阈值，适合光照不均">自适应</span>
-                            <Switch size="small" checked={preprocessCfg.adaptive ?? false}
-                              onChange={(v) => setPreprocessCfg(p => ({ ...p, adaptive: v || undefined }))} />
-                          </div>
-                          {preprocessCfg.adaptive && (
-                            <>
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] text-[#8b8fa3] ml-4">块大小</span>
-                                <InputNumber size="small" min={5} max={31} step={2} style={{ width: 72 }}
-                                  value={preprocessCfg.adaptive_block ?? 11}
-                                  onChange={(v) => setPreprocessCfg(p => ({ ...p, adaptive_block: v === 11 ? undefined : v ?? 11 }))} />
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] text-[#8b8fa3] ml-4">常数</span>
-                                <InputNumber size="small" min={0} max={10} style={{ width: 72 }}
-                                  value={preprocessCfg.adaptive_c ?? 2}
-                                  onChange={(v) => setPreprocessCfg(p => ({ ...p, adaptive_c: v === 2 ? undefined : v ?? 2 }))} />
-                              </div>
-                            </>
-                          )}
-                        </div>
+                        <PreprocessConfigPanel cfg={preprocessCfg} onChange={setPreprocessCfg} />
                         <div className="flex gap-2 mt-3 pt-3 border-t border-[#f0f0f5]">
                           <Button size="small" style={{ borderColor: "#8b5cf6", color: "#8b5cf6" }}
                             loading={previewLoading}
