@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback, useRef, type FC } from "react";
 import {
-  ReactFlow, ReactFlowProvider, Background, Controls,
+  ReactFlow, Background, Controls,
   applyNodeChanges, applyEdgeChanges,
   type Node, type Edge, type Connection, type NodeChange, type EdgeChange,
-  MarkerType, useReactFlow,
+  MarkerType, type ReactFlowInstance,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import StepNode from "./StepNode";
@@ -31,7 +31,7 @@ const FlowEditor: FC<Props> = ({
 }) => {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const rfRef = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition } = useReactFlow();
+  const rfInstance = useRef<ReactFlowInstance<StepNodeData, StepEdgeData>>(null);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => { onNodesChange(applyNodeChanges(changes, nodes) as Node<StepNodeData>[]); },
@@ -71,8 +71,14 @@ const FlowEditor: FC<Props> = ({
     setMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   }, []);
 
+  const handleCreateStep = (isCommon: boolean) => {
+    if (!menu || !rfInstance.current) return;
+    const pos = rfInstance.current.screenToFlowPosition({ x: menu.x, y: menu.y });
+    onCreateStep(pos.x, pos.y, isCommon);
+    setMenu(null);
+  };
+
   return (
-    <ReactFlowProvider>
     <div ref={rfRef} style={{ width: "100%", height: "100%", position: "relative" }}>
       <ReactFlow
         nodes={nodes} edges={edges}
@@ -80,6 +86,7 @@ const FlowEditor: FC<Props> = ({
         onConnect={handleConnect}
         onNodeClick={(_, node) => onNodeClick(node.id)}
         onPaneContextMenu={handlePaneContextMenu}
+        onInit={(instance) => { rfInstance.current = instance; }}
         nodeTypes={nodeTypes as any}
         defaultEdgeOptions={defaultEdgeOptions}
         deleteKeyCode={["Backspace", "Delete"]}
@@ -97,7 +104,7 @@ const FlowEditor: FC<Props> = ({
           <div className="absolute z-50 bg-white rounded-xl shadow-lg border border-[#eef0f2] py-1 min-w-[180px] overflow-hidden"
             style={{ left: menu.x, top: menu.y }}>
             <button className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#f5f7fa] transition-colors text-left border-0 bg-transparent"
-              onClick={() => { const pos = screenToFlowPosition({ x: menu.x, y: menu.y }); onCreateStep(pos.x, pos.y, false); setMenu(null); }}>
+              onClick={() => handleCreateStep(false)}>
               <div className="w-7 h-7 rounded-lg bg-[#eef2ff] flex items-center justify-center shrink-0">
                 <span className="text-[13px] text-[#1677ff]">+</span>
               </div>
@@ -107,7 +114,7 @@ const FlowEditor: FC<Props> = ({
               </div>
             </button>
             <button className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#f5f7fa] transition-colors text-left border-0 bg-transparent"
-              onClick={() => { const pos = screenToFlowPosition({ x: menu.x, y: menu.y }); onCreateStep(pos.x, pos.y, true); setMenu(null); }}>
+              onClick={() => handleCreateStep(true)}>
               <div className="w-7 h-7 rounded-lg bg-[#fff7e6] flex items-center justify-center shrink-0">
                 <span className="text-[13px] text-[#f59e0b]">+</span>
               </div>
@@ -120,7 +127,6 @@ const FlowEditor: FC<Props> = ({
         </>
       )}
     </div>
-    </ReactFlowProvider>
   );
 };
 
