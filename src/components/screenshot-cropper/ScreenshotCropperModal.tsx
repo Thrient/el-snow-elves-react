@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback, useEffect, type FC } from "react";
-import { Button, Input, message, Modal, Spin } from "antd";
+import { Button, Input, InputNumber, message, Modal, Popover, Spin, Switch, Tooltip } from "antd";
 import { useResponsiveStore } from "@/store/responsive-store";
 import {
   ScissorOutlined, LoadingOutlined, ZoomInOutlined, ZoomOutOutlined, DragOutlined, HighlightOutlined,
+  ExperimentOutlined, SwapOutlined,
 } from "@ant-design/icons";
+import type { PreprocessConfig } from "@/pages/task-editor/PreprocessEditor";
 
 /* ============================================================
    Canvas-based architecture (no CSS transform):
@@ -132,7 +134,8 @@ const S = {
 const Toolbar: FC<{
   tool: "select" | "pan"; onTool: (t: "select" | "pan") => void;
   zoom: number; minZoom: number; onZoom: (z: number) => void; onFit: () => void;
-}> = ({ tool, onTool, zoom, minZoom, onZoom, onFit }) => (
+  children?: React.ReactNode;
+}> = ({ tool, onTool, zoom, minZoom, onZoom, onFit, children }) => (
   <div className="flex items-center gap-1 bg-[#f5f5f7] rounded-lg p-1 w-fit">
     <Button size="small" type={tool === "select" ? "primary" : "text"} icon={<HighlightOutlined />}
       onClick={() => onTool("select")}>选区</Button>
@@ -147,6 +150,7 @@ const Toolbar: FC<{
       disabled={zoom >= 4}
       onClick={() => onZoom(Math.min(4, zoom * 1.25))} />
     <Button size="small" type="text" onClick={onFit}>适应</Button>
+    {children}
   </div>
 );
 
@@ -233,6 +237,11 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [tool, setTool] = useState<"select" | "pan">("select");
   const [hoverCursor, setHoverCursor] = useState("crosshair");
+  const [preprocessCfg, setPreprocessCfg] = useState<PreprocessConfig>({});
+  const [previewImage, setPreviewImage] = useState<CaptureResult | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [preprocessOpen, setPreprocessOpen] = useState(false);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null); // inner div = exact image size
@@ -266,6 +275,7 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
   useEffect(() => {
     if (!open || !hwnd) return;
     setLoading(true); setCapture(null); setCrop(null); setFilename(""); setTool("select");
+    setPreprocessCfg({}); setPreviewImage(null); setShowPreview(false);
     window.pywebview?.api.emit("API:TEMPLATE:CAPTURE", hwnd)
       .then((r: CaptureResult | null) => {
         if (r) {
@@ -472,6 +482,58 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
     return () => vp.removeEventListener("wheel", onWheel);
   }, [capture, syncZoomToDom]);
 
+  // --- Preprocess test ---
+  const handlePreprocessTest = async (mode: "current" | "recapture") => {
+    const cropSnapshot = cropRef.current;
+    if (!cropSnapshot) { message.warning("请先在截图上框选模板区域"); return; }
+    if (!hwnd) { message.warning("未选择窗口"); return; }
+    const cap = captureRef.current;
+    if (mode === "current" && !cap) { message.warning("请等待截图加载完成"); return; }
+
+    setPreviewLoading(true);
+    try {
+      const args: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(preprocessCfg)) {
+        if (v !== undefined) args[k] = v;
+      }
+      args.mode = mode;
+      args.crop = {
+        x: Math.round(cropSnapshot.x),
+        y: Math.round(cropSnapshot.y),
+        w: Math.round(cropSnapshot.w),
+        h: Math.round(cropSnapshot.h),
+      };
+      args.match_threshold = 0.8;
+      if (cap) {
+        args.base64 = cap.base64;
+        args.width = cap.width;
+        args.height = cap.height;
+      }
+      console.log("[PreprocessTest] args:", {
+        mode, crop: args.crop, preprocessCfg,
+        hasBase64: !!cap?.base64,
+      });
+      const res = await window.pywebview?.api.emit("API:PREPROCESS:APPLY", hwnd, args);
+      console.log("[PreprocessTest] result:", res);
+      if (res && res.base64) {
+        const matchCount = res.matches?.length ?? 0;
+        setPreviewImage(res);
+        setShowPreview(true);
+        setPreprocessOpen(false);
+        message.success(matchCount > 0
+          ? `找到 ${matchCount} 个匹配点（绿色≥0.95，橙色≥0.9，红色≥${args.match_threshold}）`
+          : "预处理完成，未找到匹配点，点击切换对比");
+      } else {
+        message.error(`返回无效: ${JSON.stringify(res)}`);
+      }
+    } catch (e: unknown) {
+      console.error("[PreprocessTest] error:", e);
+      message.error(e instanceof Error ? e.message : "预处理测试失败");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   // --- Save ---
   const handleConfirm = async () => {
     if (!crop || !filename.trim()) { if (!filename.trim()) message.warning("请输入文件名"); return; }
@@ -511,7 +573,92 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
               onFit={() => {
                 if (!capture) return;
                 centerImage(Math.min(VP_W / capture.width, 1));
-              }} />
+              }}>
+              {capture && (
+                <>
+                  <div className="w-px h-5 bg-[#d9d9d9] mx-1" />
+                  <Popover
+                    open={preprocessOpen}
+                    onOpenChange={setPreprocessOpen}
+                    trigger="click"
+                    placement="bottomLeft"
+                    content={
+                      <div className="w-[240px]">
+                        <div className="flex items-center gap-1.5 mb-3">
+                          <span className="flex items-center justify-center w-4 h-4 rounded-md shrink-0 text-[11px]"
+                            style={{ background: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}>
+                            <ExperimentOutlined />
+                          </span>
+                          <span className="text-[12px] font-semibold text-[#1a1a2e]">预处理测试</span>
+                        </div>
+                        <div className="text-[10px] text-[#8b8fa3] mb-2 leading-tight">
+                          用框选区域作为匹配模板
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] text-[#374151] cursor-help" title="将灰度图转为纯黑白，0 时自动用 OTSU">二值化</span>
+                            <Switch size="small" checked={preprocessCfg.binarize ?? false}
+                              onChange={(v) => setPreprocessCfg(p => ({ ...p, binarize: v || undefined }))} />
+                          </div>
+                          {preprocessCfg.binarize && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-[#8b8fa3] ml-4">阈值</span>
+                              <InputNumber size="small" min={0} max={255} step={5} style={{ width: 72 }}
+                                value={preprocessCfg.binarize_threshold ?? 0}
+                                onChange={(v) => setPreprocessCfg(p => ({ ...p, binarize_threshold: v === 0 ? undefined : v ?? undefined }))} />
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] text-[#374151] cursor-help" title="黑变白、白变黑">反转颜色</span>
+                            <Switch size="small" checked={preprocessCfg.binarize_invert ?? false}
+                              onChange={(v) => setPreprocessCfg(p => ({ ...p, binarize_invert: v || undefined }))} />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] text-[#374151] cursor-help" title="分块独立计算阈值，适合光照不均">自适应</span>
+                            <Switch size="small" checked={preprocessCfg.adaptive ?? false}
+                              onChange={(v) => setPreprocessCfg(p => ({ ...p, adaptive: v || undefined }))} />
+                          </div>
+                          {preprocessCfg.adaptive && (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-[#8b8fa3] ml-4">块大小</span>
+                                <InputNumber size="small" min={5} max={31} step={2} style={{ width: 72 }}
+                                  value={preprocessCfg.adaptive_block ?? 11}
+                                  onChange={(v) => setPreprocessCfg(p => ({ ...p, adaptive_block: v === 11 ? undefined : v ?? 11 }))} />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] text-[#8b8fa3] ml-4">常数</span>
+                                <InputNumber size="small" min={0} max={10} style={{ width: 72 }}
+                                  value={preprocessCfg.adaptive_c ?? 2}
+                                  onChange={(v) => setPreprocessCfg(p => ({ ...p, adaptive_c: v === 2 ? undefined : v ?? 2 }))} />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex gap-2 mt-3 pt-3 border-t border-[#f0f0f5]">
+                          <Button size="small" style={{ borderColor: "#8b5cf6", color: "#8b5cf6" }}
+                            loading={previewLoading}
+                            onClick={() => handlePreprocessTest("current")}>当前截图</Button>
+                          <Button size="small" style={{ borderColor: "#8b5cf6", color: "#8b5cf6" }}
+                            loading={previewLoading}
+                            onClick={() => handlePreprocessTest("recapture")}>重新截图</Button>
+                        </div>
+                      </div>
+                    }
+                  >
+                    <Button size="small" icon={<ExperimentOutlined />}
+                      style={{ borderColor: "#8b5cf6", color: "#8b5cf6" }}>预处理测试</Button>
+                  </Popover>
+                  {previewImage && (
+                    <Button size="small" type="text" icon={<SwapOutlined />}
+                      style={{ color: showPreview ? "#8b5cf6" : "#8b8fa3" }}
+                      onClick={() => setShowPreview(!showPreview)}>
+                      {showPreview ? "处理后" : "原图"}
+                    </Button>
+                  )}
+                </>
+              )}
+            </Toolbar>
 
             {capture ? (
               <div ref={viewportRef}
@@ -521,9 +668,9 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
                 onContextMenu={e => e.preventDefault()}>
                 <div style={S.imgWrapper(dispW, dispH, atMin)}>
                   <div ref={containerRef} style={{ position: "relative", width: dispW, height: dispH }}>
-                    <img src={capture.base64} alt="" draggable={false} style={S.img(dispW, dispH)} />
-                    {crop && <CropOverlay crop={crop} zoom={zoom} canvasW={dispW} canvasH={dispH} />}
-                    {!crop && (
+                    <img src={showPreview && previewImage ? previewImage.base64 : capture.base64} alt="" draggable={false} style={S.img(dispW, dispH)} />
+                    {crop && !showPreview && <CropOverlay crop={crop} zoom={zoom} canvasW={dispW} canvasH={dispH} />}
+                    {!crop && !showPreview && (
                       <div style={S.hint()}>
                         <span className="text-sm text-white/60 bg-black/40 px-4 py-2 rounded-full">左键拖拽框选目标区域</span>
                       </div>

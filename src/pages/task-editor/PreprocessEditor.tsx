@@ -2,7 +2,7 @@ import type { FC } from "react";
 import { Switch, InputNumber, Divider, Tooltip } from "antd";
 import { BulbOutlined } from "@ant-design/icons";
 
-interface PreprocessConfig {
+export interface PreprocessConfig {
   binarize?: boolean;
   binarize_threshold?: number;
   binarize_invert?: boolean;
