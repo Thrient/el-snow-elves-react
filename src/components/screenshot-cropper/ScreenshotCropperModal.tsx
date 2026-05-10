@@ -140,9 +140,9 @@ const Toolbar: FC<{
 }> = ({ tool, onTool, zoom, minZoom, onZoom, onFit, children }) => (
   <div className="flex items-center gap-1 bg-[#f5f5f7] rounded-lg p-1 w-fit">
     <Button size="small" type={tool === "select" ? "primary" : "text"} icon={<HighlightOutlined />}
-      onClick={() => onTool("select")}>选区</Button>
+      onClick={() => onTool("select")}>选区 <span className="text-[10px] opacity-50 ml-0.5">S</span></Button>
     <Button size="small" type={tool === "pan" ? "primary" : "text"} icon={<DragOutlined />}
-      onClick={() => onTool("pan")}>拖拽</Button>
+      onClick={() => onTool("pan")}>拖拽 <span className="text-[10px] opacity-50 ml-0.5">D</span></Button>
     <div className="w-px h-5 bg-[#d9d9d9] mx-1" />
     <Button size="small" type="text" icon={<ZoomOutOutlined />}
       disabled={zoom <= minZoom}
@@ -414,6 +414,18 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
     document.addEventListener("mouseup", onUp);
     return () => { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
   }, []); // stable — all state read via refs
+
+  // --- Keyboard shortcuts ---
+  useEffect(() => {
+    if (!open || confirmOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "s" || e.key === "S") setTool("select");
+      if (e.key === "d" || e.key === "D") setTool("pan");
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, confirmOpen]);
 
   // --- Cursor hover ---
   const handleViewportHover = useCallback((e: React.MouseEvent) => {
