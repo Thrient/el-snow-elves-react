@@ -218,7 +218,7 @@ const TaskEditorPage: FC = () => {
     return m;
   }, [editor.currentTask?.steps, editor.currentTask?.common]);
 
-  const ctx: EditorCtx = { stepKeys: allStepNames, variableOptions, stepParamsMap, hwnd: characterStore.selectedHwnd };
+  const ctx: EditorCtx = { stepKeys: allStepNames, variableOptions, stepParamsMap, hwnd: characterStore.selectedHwnd, taskName: editor.currentTask?.name, version: editor.currentTask?.version };
 
   const drawerData = drawerStep && editor.currentTask
     ? (editor.currentTask[drawerStep.isCommon ? "common" : "steps"] as Record<string, Step>)?.[drawerStep.name] : null;

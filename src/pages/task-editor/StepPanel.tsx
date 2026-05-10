@@ -1,4 +1,4 @@
-import { useState, type FC } from "react";
+import { useState, useEffect, type FC } from "react";
 import { AutoComplete, Button, Input, InputNumber, Select, Tooltip, message } from "antd";
 import { CloseOutlined, CheckOutlined, ArrowRightOutlined, DeleteOutlined, LeftOutlined, BugOutlined, PictureOutlined, ReloadOutlined, ApartmentOutlined, PlusOutlined } from "@ant-design/icons";
 import type { Step } from "@/types/task";
@@ -82,12 +82,29 @@ const FlowEditor: FC<{ step: Step; stepKeys: string[]; stepName: string; onUpdat
 
 const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"] }> = ({ step, ctx, onUpdate }) => {
   const [coordOpen, setCoordOpen] = useState(false);
+  const [templateOptions, setTemplateOptions] = useState<{ value: string; label: string }[]>([]);
   const params = step.params ?? {};
   const args = (params.args as string[]) ?? [];
   const other = Object.keys(params).filter(k => k !== "args");
   const showArgs = step.action ? ACTIONS_WITH_TEMPLATES.has(step.action) : false;
   const allowed = step.action ? (ACTION_PARAMS[step.action] ?? []) : [];
   const canAdd = allowed.filter(k => params[k] === undefined);
+
+  useEffect(() => {
+    if (!showArgs) return;
+    (async () => {
+      try {
+        const names: string[] = await window.pywebview?.api.emit(
+          "API:AUTOCOMPLETE:TEMPLATES",
+          ctx.taskName ?? null,
+          ctx.version ?? null
+        );
+        setTemplateOptions((names ?? []).map((name) => ({ value: name, label: name })));
+      } catch {
+        setTemplateOptions([]);
+      }
+    })();
+  }, [showArgs, ctx.taskName, ctx.version]);
 
   const renderParamInput = (key: string, value: unknown) => {
     if (key === "preprocess") {
@@ -174,7 +191,9 @@ const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"]
           </div>
           <div className="px-3.5 pb-3">
             <Select mode="tags" className="w-full" size="small" placeholder="输入图片名回车添加，如 按钮登录"
-              value={args} onChange={(v) => onUpdate("params", { ...params, args: v })} />
+              value={args} options={templateOptions}
+              filterOption={(input, option) => (option?.label as string ?? "").toLowerCase().includes(input.toLowerCase())}
+              onChange={(v) => onUpdate("params", { ...params, args: v })} />
           </div>
         </div>
       )}

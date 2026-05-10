@@ -74,4 +74,6 @@ export interface EditorCtx {
   variableOptions: { value: string; label: string }[];
   stepParamsMap: Record<string, Record<string, unknown>>;
   hwnd: string;
+  taskName?: string;
+  version?: string;
 }
