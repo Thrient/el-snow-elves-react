@@ -3,7 +3,7 @@ import {
   ReactFlow, Background, Controls,
   applyNodeChanges, applyEdgeChanges,
   type Node, type Edge, type Connection, type NodeChange, type EdgeChange,
-  MarkerType,
+  MarkerType, useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import StepNode from "./StepNode";
@@ -31,6 +31,7 @@ const FlowEditor: FC<Props> = ({
 }) => {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const rfRef = useRef<HTMLDivElement>(null);
+  const { screenToFlowPosition } = useReactFlow();
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => { onNodesChange(applyNodeChanges(changes, nodes) as Node<StepNodeData>[]); },
@@ -95,7 +96,7 @@ const FlowEditor: FC<Props> = ({
           <div className="absolute z-50 bg-white rounded-xl shadow-lg border border-[#eef0f2] py-1 min-w-[180px] overflow-hidden"
             style={{ left: menu.x, top: menu.y }}>
             <button className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#f5f7fa] transition-colors text-left border-0 bg-transparent"
-              onClick={() => { onCreateStep(menu.x, menu.y, false); setMenu(null); }}>
+              onClick={() => { const pos = screenToFlowPosition({ x: menu.x, y: menu.y }); onCreateStep(pos.x, pos.y, false); setMenu(null); }}>
               <div className="w-7 h-7 rounded-lg bg-[#eef2ff] flex items-center justify-center shrink-0">
                 <span className="text-[13px] text-[#1677ff]">+</span>
               </div>
@@ -105,7 +106,7 @@ const FlowEditor: FC<Props> = ({
               </div>
             </button>
             <button className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-[#f5f7fa] transition-colors text-left border-0 bg-transparent"
-              onClick={() => { onCreateStep(menu.x, menu.y, true); setMenu(null); }}>
+              onClick={() => { const pos = screenToFlowPosition({ x: menu.x, y: menu.y }); onCreateStep(pos.x, pos.y, true); setMenu(null); }}>
               <div className="w-7 h-7 rounded-lg bg-[#fff7e6] flex items-center justify-center shrink-0">
                 <span className="text-[13px] text-[#f59e0b]">+</span>
               </div>
