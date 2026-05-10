@@ -21,93 +21,7 @@ import type { EditorCtx } from "./constants";
 import { BUILTIN_VARS } from "./constants";
 import LayoutBuilder from "./LayoutBuilder";
 import StepPanel from "./StepPanel";
-
-// ---- Loop step drag-to-reorder editor ----
-
-const LoopStepEditor: FC<{
-  steps: string[]; available: string[]; onChange: (v: string[]) => void;
-}> = ({ steps, available, onChange }) => {
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const [tagFilter, setTagFilter] = useState("");
-
-  const rm = (i: number) => onChange(steps.filter((_, j) => j !== i));
-
-  const onDragStart = (i: number) => setDragIdx(i);
-
-  const onDragOver = (e: React.DragEvent, i: number) => {
-    e.preventDefault();
-    if (dragIdx === null || dragIdx === i) return;
-    const next = [...steps];
-    const [moved] = next.splice(dragIdx, 1);
-    next.splice(i, 0, moved);
-    onChange(next);
-    setDragIdx(i);
-  };
-
-  const add = (name: string) => {
-    if (steps.includes(name)) return;
-    onChange([...steps, name]);
-  };
-
-  const availableTags = available.filter((k) => !steps.includes(k));
-  const filtered = tagFilter
-    ? availableTags.filter((k) => k.toLowerCase().includes(tagFilter.toLowerCase()))
-    : availableTags;
-
-  return (
-    <div className="flex items-start gap-3">
-      <span className="text-[11px] font-medium text-[#8b8fa3] w-16 shrink-0 mt-1.5">循环步骤</span>
-      <div className="flex-1 flex flex-col gap-2">
-        {/* Selected steps list */}
-        <div className="flex flex-col border border-[#eef0f2] rounded-lg bg-[#fafbfc] overflow-hidden max-h-[156px] overflow-y-auto">
-          {steps.length === 0 && (
-            <div className="text-[11px] text-[#c0c4cc] text-center py-4">暂无循环步骤，点击下方标签添加</div>
-          )}
-          {steps.map((step, i) => (
-            <div key={step} draggable
-              onDragStart={() => onDragStart(i)}
-              onDragOver={(e) => onDragOver(e, i)}
-              onDragEnd={() => setDragIdx(null)}
-              className={`flex items-center gap-2 px-2.5 py-1.5 group cursor-default border-b border-[#eef0f2] last:border-b-0 transition-colors
-                ${dragIdx === i ? "opacity-40 bg-[#f0f4ff]" : "hover:bg-[#f5f7fa]"}`}
-            >
-              <span className="text-[#c8ccd4] cursor-grab select-none text-xs leading-none">⠿</span>
-              <span className="w-4 h-4 rounded-full bg-[#1677ff10] text-[#1677ff] text-[10px] font-medium flex items-center justify-center shrink-0">
-                {i + 1}
-              </span>
-              <span className="flex-1 text-[12px] text-[#1a1a2e] select-none">{step}</span>
-              <button onClick={() => rm(i)}
-                className="text-[10px] text-[#c0c4cc] hover:text-[#ff4d4f] opacity-0 group-hover:opacity-100
-                  transition-all w-5 h-5 flex items-center justify-center rounded hover:bg-[#fff1f0]">
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-        {/* Available steps tag cloud */}
-        <div className="flex flex-col gap-1.5">
-          {availableTags.length > 6 && (
-            <Input size="small" placeholder="筛选步骤..." value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value)} allowClear
-              className="!text-[11px]" />
-          )}
-          <div className="flex flex-wrap gap-1">
-            {filtered.map((k) => (
-              <Tag key={k} color="blue"
-                className="cursor-pointer m-0 text-[11px] px-2 py-0.5 hover:opacity-80 transition-opacity"
-                onClick={() => add(k)}>
-                + {k}
-              </Tag>
-            ))}
-            {filtered.length === 0 && (
-              <span className="text-[11px] text-[#c0c4cc]">无可添加的步骤</span>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import TaskSettingsModal from "./TaskSettingsModal";
 
 const TaskEditorPage: FC = () => {
   const editor = useEditorStore();
@@ -525,70 +439,14 @@ const TaskEditorPage: FC = () => {
         )}
       </Modal>
 
-      <Modal title={<span className="text-sm font-semibold text-[#1a1a2e]">任务设置</span>}
-        open={settingsOpen} onCancel={() => setSettingsOpen(false)} centered width={520}
-        footer={null}
-      >
-        {editor.currentTask && (
-          <div className="flex flex-col gap-5 pt-1">
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-1 h-4 rounded-full bg-[#3b82f6]" />
-                <span className="text-xs font-semibold text-[#1a1a2e]">基本信息</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-medium text-[#8b8fa3]">名称</span>
-                  <Input value={editor.currentTask!.name} readOnly size="small"
-                    className="bg-[#f8f9fb] !text-[#1a1a2e]" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-medium text-[#8b8fa3]">版本</span>
-                  <Input value={editor.currentTask!.version} readOnly size="small"
-                    className="bg-[#f8f9fb] !text-[#1a1a2e]" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-medium text-[#8b8fa3]">起始步骤</span>
-                  <Select className="w-full" size="small" placeholder="选择第一个执行的步骤" allowClear
-                    value={editor.currentTask!.start || undefined}
-                    options={[...taskStepNames, ...taskCommonNames].map((k) => ({ value: k, label: k }))}
-                    onChange={(v) => editor.updateStart(v ?? "")} />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-medium text-[#8b8fa3]">作者</span>
-                  <Input value={editor.currentTask!.author || ""} readOnly size="small"
-                    className="bg-[#f8f9fb] !text-[#1a1a2e]" />
-                </div>
-              </div>
-              <div className="mt-3 flex flex-col gap-1">
-                <span className="text-[11px] font-medium text-[#8b8fa3]">描述</span>
-                <Input.TextArea value={editor.currentTask.description} rows={2} size="small"
-                  onChange={(e) => { useEditorStore.setState({ currentTask: { ...editor.currentTask!, description: e.target.value }, isDirty: true }); }}
-                  className="!text-[13px]" />
-              </div>
-            </section>
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-1 h-4 rounded-full bg-[#722ed1]" />
-                <span className="text-xs font-semibold text-[#1a1a2e]">监控配置</span>
-              </div>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-[11px] font-medium text-[#8b8fa3] w-16 shrink-0">间隔(秒)</span>
-                  <InputNumber value={editor.currentTask.monitors.interval ?? 1}
-                    min={0.1} step={0.1} size="small" style={{ width: 100 }}
-                    onChange={(v) => editor.updateMonitors({ ...editor.currentTask!.monitors, interval: v ?? 1 })} />
-                </div>
-                <LoopStepEditor
-                  steps={editor.currentTask.monitors.loop ?? []}
-                  available={allStepNames}
-                  onChange={(loop) => editor.updateMonitors({ ...editor.currentTask!.monitors, loop })}
-                />
-              </div>
-            </section>
-          </div>
-        )}
-      </Modal>
+      {editor.currentTask && (
+        <TaskSettingsModal
+          open={settingsOpen}
+          task={editor.currentTask}
+          stepNames={allStepNames}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
       {characterStore.selectedHwnd && (
         <ScreenshotCropperModal open={cropperOpen} hwnd={characterStore.selectedHwnd}
           taskName={editor.currentTask?.name} version={editor.currentTask?.version}
