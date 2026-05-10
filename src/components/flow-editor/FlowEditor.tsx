@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef, type FC } from "react";
 import {
-  ReactFlow, Background, Controls,
+  ReactFlow, ReactFlowProvider, Background, Controls,
   applyNodeChanges, applyEdgeChanges,
   type Node, type Edge, type Connection, type NodeChange, type EdgeChange,
   MarkerType, useReactFlow,
@@ -72,6 +72,7 @@ const FlowEditor: FC<Props> = ({
   }, []);
 
   return (
+    <ReactFlowProvider>
     <div ref={rfRef} style={{ width: "100%", height: "100%", position: "relative" }}>
       <ReactFlow
         nodes={nodes} edges={edges}
@@ -119,6 +120,7 @@ const FlowEditor: FC<Props> = ({
         </>
       )}
     </div>
+    </ReactFlowProvider>
   );
 };
 
