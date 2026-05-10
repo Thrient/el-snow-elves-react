@@ -1,6 +1,6 @@
 import { useState, type FC } from "react";
 import { AutoComplete, Button, Input, InputNumber, Select, Tooltip, message } from "antd";
-import { CloseOutlined, DeleteOutlined, LeftOutlined, BugOutlined, PictureOutlined } from "@ant-design/icons";
+import { CloseOutlined, CheckOutlined, ArrowRightOutlined, DeleteOutlined, LeftOutlined, BugOutlined, PictureOutlined, ReloadOutlined, ApartmentOutlined, PlusOutlined } from "@ant-design/icons";
 import type { Step } from "@/types/task";
 import type { EditorCtx } from "./constants";
 import { ACTION_OPTS, ACTIONS_WITH_TEMPLATES, ACTION_PARAMS, PARAM_META, PLAIN_VALUE_PARAMS } from "./constants";
@@ -52,24 +52,28 @@ const CARDS: { key: CardKey; label: string; color: string; light: string; desc: 
 const FlowEditor: FC<{ step: Step; stepKeys: string[]; stepName: string; onUpdate: Props["onUpdate"] }> =
   ({ step, stepKeys, stepName, onUpdate }) => {
     const items = [
-      { k: "success" as const, label: "成功", hint: "执行成功", color: "#16a34a", bg: "#f0fdf4" },
-      { k: "failure" as const, label: "失败", hint: "执行失败", color: "#dc2626", bg: "#fef2f2" },
-      { k: "next"    as const, label: "无条件", hint: "无论结果", color: "#6b7280", bg: "#f9fafb" },
+      { k: "success" as const, label: "成功跳转", hint: "执行成功后跳转", color: "#16a34a", icon: <CheckOutlined /> },
+      { k: "failure" as const, label: "失败跳转", hint: "执行失败后跳转", color: "#dc2626", icon: <CloseOutlined /> },
+      { k: "next"    as const, label: "无条件跳转", hint: "无论结果都跳转", color: "#6b7280", icon: <ArrowRightOutlined /> },
     ];
     return (
       <div className="space-y-2">
-        {items.map(({ k, label, hint, color, bg }) => (
-          <div key={k} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-[#eef0f2] bg-white hover:border-[#dde0e6] transition-colors">
-            <div className="flex items-center gap-1.5 shrink-0 w-[72px]">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-              <span className="text-[11px] font-medium text-[#374151]">{label}</span>
-              <span className="text-[10px] text-[#c0c4cc]">{hint}</span>
+        {items.map(({ k, label, hint, color, icon }) => (
+          <div key={k} className="group rounded-xl border border-dashed bg-white transition-colors"
+            style={{ borderColor: `${color}4d`, background: `linear-gradient(135deg, ${color}0a, #fff)` }}>
+            <div className="flex items-center gap-2 px-3.5 py-2">
+              <span className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 text-[13px]"
+                style={{ background: `${color}18`, color }}>
+                {icon}
+              </span>
+              <span className="text-[12px] text-[#374151]">{label}</span>
+              <span className="text-[10px] text-[#8b8fa3]">{hint}</span>
+              <Select className="flex-1 min-w-0 ml-auto" size="small" allowClear showSearch
+                placeholder="选择目标步骤" popupMatchSelectWidth={false}
+                value={(step as any)[k] || undefined}
+                options={stepKeys.filter(sk => sk !== stepName).map(sk => ({ value: sk, label: sk }))}
+                onChange={(v) => onUpdate(k, v ?? "")} />
             </div>
-            <Select className="flex-1" size="small" allowClear showSearch
-              placeholder="选择目标步骤" popupMatchSelectWidth={false}
-              value={(step as any)[k] || undefined}
-              options={stepKeys.filter(sk => sk !== stepName).map(sk => ({ value: sk, label: sk }))}
-              onChange={(v) => onUpdate(k, v ?? "")} />
           </div>
         ))}
       </div>
@@ -267,31 +271,55 @@ const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"]
 };
 
 const SubListEditor: FC<{
-  list: any[]; ctx: EditorCtx; isKeyValue?: boolean; onChange: (v: any[]) => void;
-}> = ({ list, ctx, isKeyValue, onChange }) => {
+  list: any[]; ctx: EditorCtx; isKeyValue?: boolean; color: string; onChange: (v: any[]) => void;
+}> = ({ list, ctx, isKeyValue, color, onChange }) => {
   const arr = list ?? [];
   return (
     <div className="space-y-2">
       {arr.map((item, i) => isKeyValue ? (
-        <div key={i} className="group flex items-center gap-2 px-3 py-2 rounded-lg border border-[#eef0f2] bg-white hover:border-[#dde0e6] transition-colors">
-          <span className="w-5 h-5 rounded-full bg-[#eef2ff] flex items-center justify-center text-[10px] font-semibold text-[#1677ff] shrink-0">{i + 1}</span>
-          <Input size="small" variant="borderless" placeholder="变量名" className="flex-1 font-medium text-[12px]" value={item.name}
-            onChange={(e) => { const u = [...arr]; u[i] = { ...u[i], name: e.target.value }; onChange(u); }} />
-          <span className="text-[10px] text-[#c0c4cc]">=</span>
-          <AutoComplete className="flex-1" size="small" variant="borderless" placeholder="值" value={item.value as string}
-            options={ctx.variableOptions}
-            filterOption={(iv, opt) => opt?.label?.toLowerCase().includes(iv.toLowerCase()) ?? false}
-            onChange={(v) => { const u = [...arr]; u[i] = { ...u[i], value: v }; onChange(u); }} />
-          <button onClick={() => onChange(arr.filter((_, j) => j !== i))}
-            className="text-[#c0c4cc] hover:text-[#ff4d4f] opacity-0 group-hover:opacity-100 transition-all shrink-0">×</button>
+        <div key={i} className="group rounded-xl border border-dashed bg-white transition-colors"
+          style={{ borderColor: `${color}4d`, background: `linear-gradient(135deg, ${color}0a, #fff)` }}>
+          <div className="flex items-center gap-2 px-3.5 py-2">
+            <span className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-semibold shrink-0"
+              style={{ background: `${color}18`, color }}>{i + 1}</span>
+            <Input size="small" variant="borderless" placeholder="变量名" className="flex-1 font-mono text-[12px]" value={item.name}
+              onChange={(e) => { const u = [...arr]; u[i] = { ...u[i], name: e.target.value }; onChange(u); }} />
+            <span className="font-mono text-[10px] text-[#8b8fa3] shrink-0">=</span>
+            <AutoComplete className="flex-1" size="small" variant="borderless" placeholder="值" value={item.value as string}
+              options={ctx.variableOptions}
+              filterOption={(iv, opt) => opt?.label?.toLowerCase().includes(iv.toLowerCase()) ?? false}
+              onChange={(v) => { const u = [...arr]; u[i] = { ...u[i], value: v }; onChange(u); }} />
+            <button onClick={() => onChange(arr.filter((_, j) => j !== i))}
+              className="text-[#c0c4cc] hover:text-[#ff4d4f] opacity-0 group-hover:opacity-100 transition-all text-xs shrink-0 border-0 bg-transparent cursor-pointer">×</button>
+          </div>
         </div>
       ) : (
-        <SubflowModalItem key={i} index={i} item={item} ctx={ctx} arr={arr} onChange={onChange} />
+        <SubflowModalItem key={i} index={i} item={item} ctx={ctx} arr={arr} color={color} onChange={onChange} />
       ))}
-      <button onClick={() => onChange([...arr, isKeyValue ? { name: "", value: "" } : { step: "" }])}
-        className="flex items-center justify-center gap-1 w-full text-[11px] text-[#8b8fa3] hover:text-[#1677ff] hover:bg-[#eef2ff] py-2 rounded-lg border border-dashed border-[#d0d5dd] hover:border-[#1677ff] transition-colors">
-        ＋ 添加{isKeyValue ? "变量" : "步骤"}
-      </button>
+      {arr.length === 0 && (
+        <div className="text-center py-1">
+          <span className="text-[11px] text-[#c0c4cc]">
+            {isKeyValue ? "暂无变量，点击下方添加" : "暂无子步骤，点击下方添加"}
+          </span>
+        </div>
+      )}
+      <div className="rounded-xl border border-dashed bg-white"
+        style={{ borderColor: "rgba(148,163,184,0.3)", background: "linear-gradient(135deg, rgba(148,163,184,0.03), #fff)" }}>
+        <div className="flex items-center gap-2 px-3.5 py-2">
+          <span className="text-[11px] font-medium text-[#8b8fa3] shrink-0">
+            添加{isKeyValue ? "变量" : "步骤"}
+          </span>
+          <span className="h-px flex-1" style={{ background: "linear-gradient(to right, #e5e7eb, transparent)" }} />
+        </div>
+        <div className="px-3.5 pb-3 flex flex-wrap gap-1.5">
+          <button onClick={() => onChange([...arr, isKeyValue ? { name: "", value: "" } : { step: "" }])}
+            className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border border-dashed border-[#dde0e6] text-[#6b7280] bg-white hover:text-[#1677ff] hover:border-[#1677ff] hover:shadow-sm transition-all cursor-pointer"
+            style={{ background: "transparent" } as React.CSSProperties}>
+            <PlusOutlined className="text-[10px]" />
+            新增{isKeyValue ? "变量" : "步骤"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -454,37 +482,79 @@ const StepPanel: FC<Props> = ({ stepName, step, isCommon, ctx, onClose, onRename
                 )}
                 {(expanded === "prefix" || expanded === "postfix" || expanded === "failure_extra" || expanded === "success_extra") && (
                   <SubListEditor list={(step as any)[expanded] ?? []} ctx={ctx}
+                    color={CARDS.find(c => c.key === expanded)!.color}
                     onChange={(v) => onUpdate(expanded, v)} />
                 )}
                 {expanded === "set" && (
                   <SubListEditor list={step.set ?? []} ctx={ctx} isKeyValue
+                    color={CARDS.find(c => c.key === "set")!.color}
                     onChange={(v) => onUpdate("set", v)} />
                 )}
                 {expanded === "retry" && (
-                  <div className="rounded-lg border border-[#eef0f2] overflow-hidden">
-                    <div className="flex divide-x divide-[#eef0f2]">
-                      <div className="flex items-center gap-2 px-3 py-2.5 flex-1">
-                        <span className="text-[11px] font-medium text-[#8b8fa3] shrink-0">重试</span>
+                  <div className="rounded-xl border border-dashed bg-white"
+                    style={{ borderColor: "rgba(220,38,38,0.3)", background: "linear-gradient(135deg, rgba(220,38,38,0.04), #fff)" }}>
+                    <div className="flex items-center gap-2 px-3.5 py-2.5">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 text-[13px]"
+                        style={{ background: "rgba(220,38,38,0.1)", color: "#dc2626" }}>
+                        <ReloadOutlined />
+                      </span>
+                      <span className="text-[12px] font-semibold text-[#1a1a2e]">失败重试</span>
+                      <span className="text-[10px] text-[#8b8fa3] ml-auto">失败后自动重试</span>
+                    </div>
+                    <div className="px-3.5 pb-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] text-[#374151] shrink-0 w-[60px]">重试次数</span>
                         <InputNumber size="small" min={0} variant="borderless" className="flex-1"
                           value={step.retry?.times ?? 0}
                           onChange={v => onUpdate("retry", { times: v ?? 0, interval: step.retry?.interval ?? 0 })} />
                         <span className="text-[11px] text-[#c0c4cc] shrink-0">次</span>
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-2.5 flex-1">
-                        <span className="text-[11px] font-medium text-[#8b8fa3] shrink-0">间隔</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] text-[#374151] shrink-0 w-[60px]">重试间隔</span>
                         <InputNumber size="small" min={0} step={100} variant="borderless" className="flex-1"
                           value={step.retry?.interval ?? 0}
                           onChange={v => onUpdate("retry", { times: step.retry?.times ?? 1, interval: v ?? 0 })} />
                         <span className="text-[11px] text-[#c0c4cc] shrink-0">ms</span>
                       </div>
+                      {step.retry?.times ? (
+                        <div className="text-[10px] text-[#8b8fa3] leading-relaxed">
+                          失败后将自动重试 {step.retry.times} 次，每次间隔 {step.retry.interval ?? 0}ms
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-[#c0c4cc] leading-relaxed">
+                          设为 0 表示不重试，失败后直接终止
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
                 {expanded === "extends" && (
-                  <Select className="w-full" size="small" allowClear showSearch placeholder="选择一个步骤作为模板"
-                    value={step.extends || undefined} popupMatchSelectWidth={false}
-                    options={ctx.stepKeys.filter(k => k !== stepName).map(k => ({ value: k, label: k }))}
-                    onChange={v => onUpdate("extends", v ?? "")} />
+                  <div className="rounded-xl border border-dashed bg-white"
+                    style={{ borderColor: "rgba(139,92,246,0.3)", background: "linear-gradient(135deg, rgba(139,92,246,0.04), #fff)" }}>
+                    <div className="flex items-center gap-2 px-3.5 py-2.5">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 text-[13px]"
+                        style={{ background: "rgba(139,92,246,0.1)", color: "#8b5cf6" }}>
+                        <ApartmentOutlined />
+                      </span>
+                      <span className="text-[12px] font-semibold text-[#1a1a2e]">继承模板</span>
+                      <span className="text-[10px] text-[#8b8fa3] ml-auto">复用已有步骤配置</span>
+                    </div>
+                    <div className="px-3.5 pb-3">
+                      <Select className="w-full" size="small" allowClear showSearch placeholder="选择一个步骤作为模板"
+                        value={step.extends || undefined} popupMatchSelectWidth={false}
+                        options={ctx.stepKeys.filter(k => k !== stepName).map(k => ({ value: k, label: k }))}
+                        onChange={v => onUpdate("extends", v ?? "")} />
+                      {step.extends ? (
+                        <div className="text-[10px] text-[#8b8fa3] leading-relaxed mt-2">
+                          将继承「{step.extends}」的全部配置，当前步骤的显式设置会覆盖继承值
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-[#c0c4cc] leading-relaxed mt-2">
+                          选择一个步骤以继承其动作与参数配置
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

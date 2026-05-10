@@ -134,10 +134,10 @@ const WhenEditor: FC<{
 };
 
 interface Props {
-  index: number; item: any; ctx: EditorCtx; arr: any[]; onChange: (v: any[]) => void;
+  index: number; item: any; ctx: EditorCtx; arr: any[]; color?: string; onChange: (v: any[]) => void;
 }
 
-const SubflowModalItem: FC<Props> = ({ index: i, item, ctx, arr, onChange }) => {
+const SubflowModalItem: FC<Props> = ({ index: i, item, ctx, arr, color = "#9ca3af", onChange }) => {
   const stepName = typeof item === "string" ? item : item.step;
   const itemWhen = typeof item === "object" ? (item.when ?? "") : "";
   const argsObj = typeof item === "object" && item.args && typeof item.args === "object"
@@ -181,9 +181,11 @@ const SubflowModalItem: FC<Props> = ({ index: i, item, ctx, arr, onChange }) => 
   );
 
   return (
-    <div className="rounded-lg border border-[#eef0f2] bg-white hover:border-[#dde0e6] transition-all flex-1 min-w-0">
+    <div className="group rounded-xl border border-dashed bg-white transition-colors flex-1 min-w-0"
+      style={{ borderColor: `${color}4d`, background: `linear-gradient(135deg, ${color}0a, #fff)` }}>
       <div className="flex items-center gap-1.5 px-4 py-2.5">
-        <span className="w-5 h-5 rounded-full bg-[#eef2ff] flex items-center justify-center text-[10px] font-bold text-[#3b82f6] shrink-0">{i + 1}</span>
+        <span className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-semibold shrink-0"
+          style={{ background: `${color}18`, color }}>{i + 1}</span>
         <Select size="small" variant="borderless" className="flex-1 min-w-0 font-semibold" showSearch allowClear
           placeholder="选择步骤" value={baseName || undefined} popupMatchSelectWidth={false}
           options={ctx.stepKeys.map((k) => ({ value: k, label: k }))} onChange={handleStepChange} />
@@ -234,7 +236,8 @@ const SubflowModalItem: FC<Props> = ({ index: i, item, ctx, arr, onChange }) => 
             </span>
           </Popover>
         ) : null}
-          <Button type="text" size="small" className="!text-[#d0d5dd] hover:!text-[#dc2626] shrink-0"
+          <Button type="text" size="small"
+            className="!text-[#c0c4cc] hover:!text-[#dc2626] opacity-0 group-hover:opacity-100 transition-all shrink-0"
             onClick={() => { const u = [...arr]; u.splice(i, 1); onChange(u); }}><DeleteOutlined className="text-[11px]" /></Button>
         </div>
       </div>
