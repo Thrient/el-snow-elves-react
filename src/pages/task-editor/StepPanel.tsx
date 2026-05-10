@@ -1,12 +1,16 @@
 import { useState, type FC } from "react";
-import { AutoComplete, Button, Input, InputNumber, Select, Tooltip } from "antd";
-import { CloseOutlined, DeleteOutlined, LeftOutlined } from "@ant-design/icons";
+import { AutoComplete, Button, Input, InputNumber, Select, Tooltip, message } from "antd";
+import { CloseOutlined, DeleteOutlined, LeftOutlined, BugOutlined, PictureOutlined } from "@ant-design/icons";
 import type { Step } from "@/types/task";
 import type { EditorCtx } from "./constants";
 import { ACTION_OPTS, ACTIONS_WITH_TEMPLATES, ACTION_PARAMS, PARAM_META, PLAIN_VALUE_PARAMS } from "./constants";
 import SubflowModalItem from "./SubflowModalItem";
 import PosInput from "./PosInput";
+import PreprocessEditor from "./PreprocessEditor";
+import KeyInput from "@/components/settings-field/components/KeyInput";
 import CoordPickerModal from "@/components/coord-picker/CoordPickerModal";
+import { useCharacterStore } from "@/store/character";
+import { useEditorStore } from "@/store/editor-store";
 
 /* ================================================================
    StepPanel — dashboard + single-expand editing panel
@@ -79,68 +83,180 @@ const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"]
   const other = Object.keys(params).filter(k => k !== "args");
   const showArgs = step.action ? ACTIONS_WITH_TEMPLATES.has(step.action) : false;
   const allowed = step.action ? (ACTION_PARAMS[step.action] ?? []) : [];
-  const canAdd = allowed.filter(k => !params[k]);
+  const canAdd = allowed.filter(k => params[k] === undefined);
+
+  const renderParamInput = (key: string, value: unknown) => {
+    if (key === "preprocess") {
+      return (
+        <PreprocessEditor
+          value={(value ?? {}) as Record<string, unknown>}
+          onChange={(v) => onUpdate("params", { ...params, preprocess: v })}
+          onRemove={() => { const p = { ...params }; delete p.preprocess; onUpdate("params", p); }} />
+      );
+    }
+    if (key === "pos") {
+      return <PosInput params={params} onUpdate={onUpdate} hwnd={ctx.hwnd} onCoordOpen={() => setCoordOpen(true)} />;
+    }
+    if (key === "click_mode") {
+      return (
+        <Select size="small" style={{ width: 150 }} allowClear
+          value={(value as string) || undefined}
+          placeholder="默认 random"
+          options={[
+            { value: "random", label: "random — 随机选一个" },
+            { value: "first", label: "first — 第一个" },
+            { value: "last", label: "last — 最后一个" },
+            { value: "all", label: "all — 全部点击" },
+            { value: "all_reverse", label: "all_reverse — 倒序全部" },
+          ]}
+          onChange={(v) => onUpdate("params", { ...params, click_mode: v ?? "" })} />
+      );
+    }
+    if (key === "key") {
+      return (
+        <KeyInput value={(value as string) ?? ""}
+          onChange={(v) => onUpdate("params", { ...params, key: v })} />
+      );
+    }
+    // Number params
+    if (key === "threshold" || key === "seconds" || key === "k" || key === "count" || key === "x" || key === "y" ||
+        key === "pre_delay" || key === "post_delay") {
+      const raw = typeof value === "string" ? value : String(value ?? "");
+      return (
+        <Input size="small" className="font-mono text-[12px]" style={{ width: 80 }}
+          value={raw}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || v === "null") {
+              onUpdate("params", { ...params, [key]: v === "null" ? null : "" });
+              return;
+            }
+            const n = Number(v);
+            onUpdate("params", { ...params, [key]: !isNaN(n) ? n : v });
+          }} />
+      );
+    }
+    // box / plain text
+    const raw = typeof value === "string" ? value : JSON.stringify(value);
+    return (
+      <Input size="small" className="font-mono text-[12px]" style={{ width: 140 }}
+        value={raw}
+        placeholder={key === "box" ? "[x1, y1, x2, y2]" : ""}
+        onChange={(e) => {
+          let v: unknown = e.target.value;
+          const n = Number(v);
+          if (v !== "" && !isNaN(n)) v = n;
+          onUpdate("params", { ...params, [key]: v });
+        }} />
+    );
+  };
 
   return (
     <div className="space-y-2.5">
+      {/* 模板图片 args */}
       {showArgs && (
-        <div className="rounded-lg border border-[#eef0f2] bg-white p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="w-2 h-2 rounded-full bg-[#3b82f6] shrink-0" />
-            <span className="text-[11px] font-medium text-[#374151]">模板图片</span>
-            <code className="text-[10px] text-[#c0c4cc]">args</code>
+        <div className="rounded-xl border border-dashed bg-white"
+          style={{ borderColor: "rgba(59,130,246,0.25)", background: "linear-gradient(135deg, rgba(59,130,246,0.04), #fff)" }}>
+          <div className="flex items-center gap-2 px-3.5 py-2.5">
+            <span className="flex items-center justify-center w-5 h-5 rounded-md shrink-0 text-[13px]"
+              style={{ background: "rgba(59,130,246,0.1)", color: "#3b82f6" }}>
+              <PictureOutlined />
+            </span>
+            <span className="text-[12px] font-semibold text-[#1a1a2e]">模板图片</span>
+            <Tooltip title="模板图片名列表，不含路径和 .bmp 后缀。支持 {变量} 嵌入" placement="top">
+              <span className="text-[10px] text-[#c0c4cc] cursor-help hover:text-[#6b7280]">?</span>
+            </Tooltip>
+            <span className="text-[10px] text-[#8b8fa3] ml-auto">输入图片名后回车添加</span>
           </div>
-          <Select mode="tags" className="w-full" size="small" placeholder="输入图片名回车添加" value={args}
-            onChange={(v) => onUpdate("params", { ...params, args: v })} />
+          <div className="px-3.5 pb-3">
+            <Select mode="tags" className="w-full" size="small" placeholder="输入图片名回车添加，如 按钮登录"
+              value={args} onChange={(v) => onUpdate("params", { ...params, args: v })} />
+          </div>
         </div>
       )}
+
+      {/* 已添加的参数 */}
       {other.map(key => {
         const meta = PARAM_META[key];
-        const raw = typeof params[key] === "string" ? params[key] as string : JSON.stringify(params[key]);
-        return (
-          <div key={key} className="group flex items-center gap-2 px-3 py-2 rounded-lg border border-[#eef0f2] bg-white hover:border-[#dde0e6] transition-colors">
-            <span className="text-[11px] font-medium text-[#6b7280] w-[72px] shrink-0 truncate">{meta?.label ?? key}</span>
-            <div className="flex-1 flex items-center">
-              {PLAIN_VALUE_PARAMS.has(key) ? (
-                key === "pos" ? (
-                  <PosInput params={params} onUpdate={onUpdate} hwnd={ctx.hwnd} onCoordOpen={() => setCoordOpen(true)} />
-                ) : (
-                  <Input size="small" variant="borderless" className="flex-1 text-[12px]" placeholder={key === "box" ? "[x,y,w,h]" : ""}
-                    value={raw} onChange={(e) => {
-                      let v: unknown = e.target.value; const n = Number(v);
-                      if (v !== "" && !isNaN(n)) v = n;
-                      onUpdate("params", { ...params, [key]: v });
-                    }} />
-                )
-              ) : (
-                <AutoComplete className="flex-1" size="small" variant="borderless" value={raw}
-                  options={ctx.variableOptions}
-                  filterOption={(iv, opt) => opt?.label?.toLowerCase().includes(iv.toLowerCase()) ?? false}
-                  onChange={(v) => {
-                    let val: unknown = v; const n = Number(v);
-                    if (v !== "" && !isNaN(n)) val = n;
-                    onUpdate("params", { ...params, [key]: val });
-                  }} />
-              )}
+        if (key === "preprocess") {
+          return <div key={key}>{renderParamInput(key, params[key])}</div>;
+        }
+        const accentColor = meta?.color ?? "#9ca3af";
+        // pos needs more space for coordinate inputs
+        if (key === "pos") {
+          return (
+            <div key={key} className="group rounded-xl border border-dashed bg-white transition-colors"
+              style={{ borderColor: `${accentColor}4d`, background: `linear-gradient(135deg, ${accentColor}0a, #fff)` }}>
+              <div className="flex items-center justify-between px-3.5 py-2">
+                <Tooltip title={meta?.tip || meta?.desc} placement="left">
+                  <div className="flex items-center gap-1.5 cursor-help">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-md shrink-0" style={{ background: `${accentColor}18`, color: accentColor, fontSize: "13px" }}>
+                      {meta?.icon}
+                    </span>
+                    <span className="text-[12px] text-[#374151] select-none">{meta?.label ?? key}</span>
+                  </div>
+                </Tooltip>
+                <button onClick={() => { const p = { ...params }; delete p.pos; onUpdate("params", p); }}
+                  className="text-[#c0c4cc] hover:text-[#ff4d4f] opacity-0 group-hover:opacity-100 transition-all text-xs shrink-0 border-0 bg-transparent cursor-pointer">×</button>
+              </div>
+              <div className="px-3.5 pb-2.5">
+                {renderParamInput(key, params[key])}
+              </div>
             </div>
-            <button onClick={() => { const p = { ...params }; delete p[key]; onUpdate("params", p); }}
-              className="text-[#c0c4cc] hover:text-[#ff4d4f] opacity-0 group-hover:opacity-100 transition-all shrink-0 ml-1">×</button>
+          );
+        }
+        // Standard compact row card
+        return (
+          <div key={key} className="group rounded-xl border border-dashed bg-white transition-colors"
+            style={{ borderColor: `${accentColor}4d`, background: `linear-gradient(135deg, ${accentColor}0a, #fff)` }}>
+            <div className="flex items-center justify-between px-3.5 py-2">
+              <Tooltip title={meta?.tip || meta?.desc} placement="left">
+                <div className="flex items-center gap-1.5 cursor-help min-w-0">
+                  <span className="flex items-center justify-center w-5 h-5 rounded-md shrink-0" style={{ background: `${accentColor}18`, color: accentColor, fontSize: "13px" }}>
+                    {meta?.icon}
+                  </span>
+                  <span className="text-[12px] text-[#374151] select-none truncate">{meta?.label ?? key}</span>
+                  {meta?.range && (
+                    <span className="text-[10px] text-[#c0c4cc] font-mono shrink-0 hidden sm:inline">{meta.range}</span>
+                  )}
+                </div>
+              </Tooltip>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {renderParamInput(key, params[key])}
+                <button onClick={() => { const p = { ...params }; delete p[key]; onUpdate("params", p); }}
+                  className="text-[#c0c4cc] hover:text-[#ff4d4f] opacity-0 group-hover:opacity-100 transition-all text-xs border-0 bg-transparent cursor-pointer">×</button>
+              </div>
+            </div>
           </div>
         );
       })}
+
+      {/* 添加参数 */}
       {canAdd.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 items-center pt-1">
-          <span className="text-[10px] text-[#c0c4cc] mr-1">添加参数</span>
+        <div className="rounded-xl border border-dashed bg-white"
+          style={{ borderColor: "rgba(148,163,184,0.3)", background: "linear-gradient(135deg, rgba(148,163,184,0.03), #fff)" }}>
+          <div className="flex items-center gap-2 px-3.5 py-2">
+            <span className="text-[11px] font-medium text-[#8b8fa3] shrink-0">添加参数</span>
+            <span className="h-px flex-1" style={{ background: "linear-gradient(to right, #e5e7eb, transparent)" }} />
+          </div>
+          <div className="px-3.5 pb-3 flex flex-wrap gap-1.5">
           {canAdd.map(k => {
             const meta = PARAM_META[k];
+            const accent = meta?.color ?? "#9ca3af";
             return (
-              <button key={k} onClick={() => onUpdate("params", { ...params, [k]: "" })}
-                className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-md border border-dashed border-[#d0d5dd] text-[#6b7280] hover:text-[#1677ff] hover:border-[#1677ff] hover:bg-[#eff6ff] transition-colors">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: meta?.color ?? "#9ca3af" }} />
-                {meta?.label ?? k}
-              </button>
+              <Tooltip key={k} title={meta?.desc}>
+                <button onClick={() => onUpdate("params", { ...params, [k]: "" })}
+                  className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border border-dashed border-[#dde0e6] text-[#6b7280] bg-white hover:text-[#1677ff] hover:border-[#1677ff] hover:shadow-sm transition-all cursor-pointer border-0 bg-transparent"
+                  style={{ border: `1px dashed ${accent}40`, background: `${accent}06` } as React.CSSProperties}>
+                  <span className="flex items-center justify-center w-4 h-4 rounded shrink-0 text-[10px]" style={{ background: `${accent}18`, color: accent }}>
+                    {meta?.icon}
+                  </span>
+                  {meta?.label ?? k}
+                </button>
+              </Tooltip>
             );
           })}
+          </div>
         </div>
       )}
       {ctx.hwnd && <CoordPickerModal open={coordOpen} hwnd={ctx.hwnd}
@@ -227,9 +343,56 @@ const StepPanel: FC<Props> = ({ stepName, step, isCommon, ctx, onClose, onRename
                 <code className="text-[11px] font-semibold text-[#1a1a2e] bg-[#f0f2f5] px-1.5 py-0.5 rounded">{o.label}</code>
                 <span className="text-[11px] text-[#8b8fa3]">{o.desc}</span></span>,
             }))} />
-          <Input size="small" placeholder="步骤说明…" value={step.description || ""}
-            onChange={e => onUpdate("description", e.target.value || undefined)} />
         </div>
+
+        {/* ── Debug execution ── */}
+        {ctx.hwnd && (
+          <div className="rounded-xl border border-dashed border-[#ffa940] bg-[#fffbe6] p-3.5 space-y-2">
+            <div className="flex items-center gap-2">
+              <BugOutlined className="text-[#fa8c16] text-sm" />
+              <span className="text-[11px] font-semibold text-[#1a1a2e]">调试运行</span>
+              <span className="text-[10px] text-[#8b8fa3]">窗口 {ctx.hwnd}</span>
+            </div>
+            <div className="flex gap-2">
+              <Button size="small" type="primary"
+                style={{ borderColor: '#fa8c16', background: '#fa8c16' }}
+                onClick={() => {
+                  const task = useEditorStore.getState().currentTask;
+                  if (!task) return;
+                  const charStore = useCharacterStore.getState();
+                  const hwnd = charStore.selectedHwnd;
+                  if (!hwnd) { message.warning("请先在窗口管理中选择一个窗口"); return; }
+                  charStore.pushExecute(hwnd, {
+                    id: task.id, name: task.name, version: task.version,
+                    values: task.values, debugStart: stepName,
+                  });
+                  message.success(`已添加到窗口 ${hwnd}：从「${stepName}」开始`);
+                }}>
+                从此步骤开始
+              </Button>
+              <Button size="small"
+                style={{ borderColor: '#fa8c16', color: '#fa8c16' }}
+                onClick={() => {
+                  const task = useEditorStore.getState().currentTask;
+                  if (!task) return;
+                  const charStore = useCharacterStore.getState();
+                  const hwnd = charStore.selectedHwnd;
+                  if (!hwnd) { message.warning("请先在窗口管理中选择一个窗口"); return; }
+                  charStore.pushExecute(hwnd, {
+                    id: task.id, name: task.name, version: task.version,
+                    values: task.values, debugStart: stepName, debugSingle: true,
+                  });
+                  message.success(`已添加到窗口 ${hwnd}：单步执行「${stepName}」`);
+                }}>
+                单步执行
+              </Button>
+            </div>
+            <div className="text-[10px] text-[#8b8fa3] leading-relaxed">
+              从此步骤开始：覆盖任务入口，后续正常流转。<br />
+              单步执行：仅执行此步骤，完成后立即结束（忽略跳转）。
+            </div>
+          </div>
+        )}
 
         {/* Dashboard or Expanded */}
         {expanded === null ? (

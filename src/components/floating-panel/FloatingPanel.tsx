@@ -218,7 +218,7 @@ const FloatingPanel: FC = () => {
               style={{
                 left: -4, top: -4,
                 width: BALL_SIZE + 8, height: BALL_SIZE + 8,
-                border: "1.5px solid rgba(100,140,255,0.25)",
+                border: "1.5px solid rgba(22,119,255,0.25)",
                 animation: "pulse-ring 2.5s ease-out infinite",
               }}
             />
@@ -231,16 +231,12 @@ const FloatingPanel: FC = () => {
             style={{
               width: BALL_SIZE,
               height: BALL_SIZE,
-              background: "linear-gradient(145deg, rgba(120,145,255,0.5) 0%, rgba(80,165,255,0.4) 35%, rgba(110,215,205,0.35) 100%)",
-              backdropFilter: "blur(18px) saturate(160%)",
-              WebkitBackdropFilter: "blur(18px) saturate(160%)",
+              background: "linear-gradient(145deg, #1677ff 0%, #4096ff 100%)",
               boxShadow: [
-                "0 4px 24px rgba(80,100,220,0.22)",
-                "0 1px 4px rgba(80,100,220,0.12)",
-                "inset 0 1px 0 rgba(255,255,255,0.6)",
-                "inset 0 -2px 3px rgba(0,0,0,0.03)",
+                "0 4px 16px rgba(22,119,255,0.3)",
+                "0 1px 3px rgba(22,119,255,0.15)",
+                "inset 0 1px 0 rgba(255,255,255,0.25)",
               ].join(", "),
-              border: "1px solid rgba(255,255,255,0.55)",
             }}
             onMouseDown={handleMouseDown}
             onClick={toggle}

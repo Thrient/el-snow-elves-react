@@ -8,6 +8,7 @@ import {
   ProfileOutlined,
   SettingOutlined,
   BookOutlined,
+  EditOutlined,
   ReadOutlined,
 } from '@ant-design/icons'
 
@@ -47,6 +48,11 @@ const AppMenu: FC<Props> = ({ collapsed }) => {
       key: '/docs',
       icon: <BookOutlined/>,
       label: '使用手册',
+    },
+    {
+      key: '/editor-docs',
+      icon: <EditOutlined/>,
+      label: '编辑教程',
     },
     {
       key: '/logs',

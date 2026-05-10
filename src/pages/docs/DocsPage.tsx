@@ -409,6 +409,7 @@ const DocsPage: FC = () => {
                   { param: "count",       type: "number",             act: "key_click / mouse_click",        desc: "重复次数，默认 1" },
                   { param: "pre_delay",   type: "number",             act: "全部",                           desc: "操作前延迟等待（ms），默认 1500" },
                   { param: "post_delay",  type: "number",             act: "全部",                           desc: "操作后延迟等待（ms），默认 1500" },
+                  { param: "preprocess",  type: "object",             act: "touch / exits / wait / wait_disappear", desc: "图像预处理配置，独立开关组合。详见 §5.1" },
                 ]}
                 columns={[
                   { title: "参数", dataIndex: "param", key: "param", width: 120, render: (v: string) => <InlineCode>{v}</InlineCode> },
@@ -420,6 +421,55 @@ const DocsPage: FC = () => {
                 size="small"
                 pagination={false}
               />
+            </div>
+            <Divider className="!my-5" />
+            <Text strong className="text-[14px] block mb-3" id="preprocess-detail">§5.1 图像预处理（preprocess）详细参考</Text>
+            <Paragraph className="!text-[#444] !text-[14px]">
+              预处理所有字段均为独立开关，不设则默认不启用。可自由组合（如二值化 + 反转）。
+            </Paragraph>
+            <div className="overflow-hidden rounded-xl border border-[#e8eaed]">
+              <Table
+                dataSource={[
+                  { param: "binarize",            type: "bool",   default: "false",  desc: "二值化。将灰度图转为纯黑白，消除纹理干扰。阈值由 binarize_threshold 控制（0=OTSU自动）" },
+                  { param: "binarize_threshold",  type: "0-255",  default: "0",      desc: "二值化固定阈值。0 时用 OTSU 自动计算。推荐范围 100-180，值越大黑色越多" },
+                  { param: "binarize_invert",     type: "bool",   default: "false",  desc: "反转二值化结果（黑变白/白变黑）。适合亮色目标在暗色背景上的场景" },
+                  { param: "adaptive",            type: "bool",   default: "false",  desc: "自适应高斯阈值。将图像分成小块独立计算阈值，适合光照不均、渐变背景。与 binarize 互斥（优先）" },
+                  { param: "adaptive_block",      type: "奇数",   default: "11",     desc: "自适应阈值块大小（像素）。值越小越敏感但噪声越多。推荐范围 9-15" },
+                  { param: "adaptive_c",          type: "2-10",   default: "2",      desc: "自适应阈值常数，从每块均值中减去。值越大匹配越宽松。推荐范围 2-5" },
+                ]}
+                columns={[
+                  { title: "字段", dataIndex: "param", key: "param", width: 150, render: (v: string) => <InlineCode>{v}</InlineCode> },
+                  { title: "类型", dataIndex: "type", key: "type", width: 60, render: (v: string) => <span className="text-[11px] text-[#999] font-mono">{v}</span> },
+                  { title: "默认", dataIndex: "default", key: "default", width: 55, render: (v: string) => <span className="text-[11px] text-[#999]">{v}</span> },
+                  { title: "说明", dataIndex: "desc", key: "desc", render: (v: string) => <span className="text-[13px]">{v}</span> },
+                ]}
+                rowKey="param"
+                size="small"
+                pagination={false}
+              />
+            </div>
+            <div className="mt-4 space-y-3">
+              <Text strong className="text-[14px] block">使用示例</Text>
+              <CodeBlock>{`// 仅 OTSU 二值化（最常用）
+"preprocess": { "binarize": true }
+
+// 固定阈值 150 二值化
+"preprocess": { "binarize": true, "binarize_threshold": 150 }
+
+// 二值化 + 反转（亮底暗字 → 暗底亮字）
+"preprocess": { "binarize": true, "binarize_invert": true }
+
+// 自适应阈值（光照不均场景）
+"preprocess": { "adaptive": true }
+
+// 自适应 + 调参
+"preprocess": { "adaptive": true, "adaptive_block": 15, "adaptive_c": 3 }
+
+// 仅反转（不做二值化，直接反转灰度）
+"preprocess": { "binarize_invert": true }`}</CodeBlock>
+              <Callout type="tip" title="调试建议">
+                如果某种预处理导致一直匹配不上，直接删掉对应字段或设为 <InlineCode>false</InlineCode> 即可。每个开关独立控制，互不影响。
+              </Callout>
             </div>
           </Section>
 

@@ -87,6 +87,8 @@ export type TaskBase = {
   name: string
   version: string
   values: Record<string, unknown>
+  debugStart?: string
+  debugSingle?: boolean
 }
 
 export type Task = TaskBase & {

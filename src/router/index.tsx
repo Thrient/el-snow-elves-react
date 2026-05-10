@@ -9,6 +9,7 @@ const TaskPage = lazy(() => import('@/pages/task/TaskPage'));
 const TaskEditorPage = lazy(() => import('@/pages/task-editor/TaskEditorPage'));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const DocsPage = lazy(() => import('@/pages/docs/DocsPage'));
+const EditorDocsPage = lazy(() => import('@/pages/editor-docs/EditorDocsPage'));
 const LogsPage = lazy(() => import('@/pages/logs/LogsPage'));
 
 
@@ -58,6 +59,14 @@ export const router = createHashRouter([
         element: (
           <Suspense fallback={<div>加载中...</div>}>
             <TaskEditorPage/>
+          </Suspense>
+        )
+      },
+      {
+        path: '/editor-docs',
+        element: (
+          <Suspense fallback={<div>加载中...</div>}>
+            <EditorDocsPage/>
           </Suspense>
         )
       },
