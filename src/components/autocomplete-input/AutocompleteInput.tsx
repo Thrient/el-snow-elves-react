@@ -48,29 +48,24 @@ const AutocompleteInput: FC<Props> = ({
 
       switch (type) {
         case "action":
-          result = await window.pywebview?.api.emit("API:AUTOCOMPLETE:ACTIONS");
+          result = (await window.pywebview?.api.emit("API:AUTOCOMPLETE:ACTIONS")) ?? [];
           break;
-        case "template":
-          result = await window.pywebview?.api.emit(
+        case "template": {
+          const names: string[] = (await window.pywebview?.api.emit(
             "API:AUTOCOMPLETE:TEMPLATES",
             context.taskName ?? null,
             context.version ?? null
-          );
-          result = (result ?? []).map((name: string) => ({
-            value: name,
-            label: name,
-          }));
+          )) ?? [];
+          result = names.map((name) => ({ value: name, label: name }));
           break;
+        }
         case "step":
           if (context.taskId) {
-            result = await window.pywebview?.api.emit(
+            const names: string[] = (await window.pywebview?.api.emit(
               "API:AUTOCOMPLETE:STEPS",
               context.taskId
-            );
-            result = (result ?? []).map((name: string) => ({
-              value: name,
-              label: name,
-            }));
+            )) ?? [];
+            result = names.map((name) => ({ value: name, label: name }));
           } else {
             result = [];
           }
@@ -79,7 +74,6 @@ const AutocompleteInput: FC<Props> = ({
           const items: { value: string; label: string }[] = [
             { value: "{result}", label: "{result} — 当前步骤返回值" },
           ];
-          // CONFIG variables from settings
           try {
             const settings = await window.pywebview?.api.emit("API:SETTINGS:LOAD");
             if (settings?.values) {
@@ -97,16 +91,12 @@ const AutocompleteInput: FC<Props> = ({
           break;
         }
         case "subflow":
-          // subflow names = step names (subflows are steps called via run_subflow)
           if (context.taskId) {
-            result = await window.pywebview?.api.emit(
+            const names: string[] = (await window.pywebview?.api.emit(
               "API:AUTOCOMPLETE:STEPS",
               context.taskId
-            );
-            result = (result ?? []).map((name: string) => ({
-              value: name,
-              label: name,
-            }));
+            )) ?? [];
+            result = names.map((name) => ({ value: name, label: name }));
           } else {
             result = [];
           }

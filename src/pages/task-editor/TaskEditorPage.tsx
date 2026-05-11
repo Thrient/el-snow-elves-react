@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type FC } from "react";
 import {
-  Button, Input, InputNumber, message, Modal, Select, Space, Tag, Tooltip,
+  Button, Input, message, Modal, Space, Tag, Tooltip,
 } from "antd";
 import {
   ArrowLeftOutlined, ArrowRightOutlined, CameraOutlined, CodeOutlined, EditOutlined,
@@ -132,7 +132,7 @@ const TaskEditorPage: FC = () => {
     return m;
   }, [editor.currentTask?.steps, editor.currentTask?.common]);
 
-  const ctx: EditorCtx = { stepKeys: allStepNames, variableOptions, stepParamsMap, hwnd: characterStore.selectedHwnd, taskName: editor.currentTask?.name, version: editor.currentTask?.version };
+  const ctx: EditorCtx = { stepKeys: allStepNames, variableOptions, stepParamsMap, hwnd: characterStore.selectedHwnd ?? '', taskName: editor.currentTask?.name, version: editor.currentTask?.version };
 
   const drawerData = drawerStep && editor.currentTask
     ? (editor.currentTask[drawerStep.isCommon ? "common" : "steps"] as Record<string, Step>)?.[drawerStep.name] : null;
@@ -207,8 +207,9 @@ const TaskEditorPage: FC = () => {
       setCreateOpen(false); setNewName(""); setNewVersion("1.0.0"); setNewAuthor(""); setNewDesc("");
       message.success("任务创建成功"); loadTaskList();
       if (editor.currentTask) {
+        const task = editor.currentTask;
         requestAnimationFrame(() => {
-          const { nodes, edges } = taskToFlow(editor.currentTask);
+          const { nodes, edges } = taskToFlow(task);
           setFlowNodes(nodes); setFlowEdges(edges);
         });
       }
@@ -333,8 +334,8 @@ const TaskEditorPage: FC = () => {
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#eef2ff] flex items-center justify-center">
               <CodeOutlined className="text-sm text-[#1677ff]" /></div>
-            <span className="text-sm font-bold text-[#1a1a2e]">{editor.currentTask.name}</span>
-            <Tag color="blue" className="m-0 text-[11px]">v{editor.currentTask.version}</Tag>
+            <span className="text-sm font-bold text-[#1a1a2e]">{editor.currentTask!.name}</span>
+            <Tag color="blue" className="m-0 text-[11px]">v{editor.currentTask!.version}</Tag>
             {editor.isDirty && <Tag color="orange" className="m-0 text-[11px]">已修改</Tag>}
           </div>
           <div className="w-px h-5 bg-[#e5e7eb] mx-1" />
@@ -359,10 +360,9 @@ const TaskEditorPage: FC = () => {
 
       <div className="flex flex-1 min-h-0">
         <div className="flex-1 min-h-0 bg-[#fcfcfd]">
-          <FlowEditor task={editor.currentTask} nodes={flowNodes} edges={flowEdges}
+          <FlowEditor task={editor.currentTask!} nodes={flowNodes} edges={flowEdges}
             onNodesChange={(ns) => { setFlowNodes(ns); if (!initRef.current) editor.setDirty(true); }}
             onEdgesChange={(es) => { setFlowEdges(es); if (!initRef.current) editor.setDirty(true); }}
-            onConnect={() => editor.setDirty(true)}
             onNodesDelete={(ids) => {
               ids.forEach((id) => {
                 const isCommon = id in (editor.currentTask?.common ?? {});

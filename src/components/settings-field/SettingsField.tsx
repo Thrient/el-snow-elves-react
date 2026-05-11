@@ -12,7 +12,6 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import type { Cell } from "@/types/task";
-import type { AutocompleteType } from "@/components/autocomplete-input/AutocompleteInput";
 import AutocompleteInput from "@/components/autocomplete-input/AutocompleteInput";
 import KeyInput from "./components/KeyInput";
 

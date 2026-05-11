@@ -269,7 +269,7 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
   // Snap to exact viewport dimensions when at minimum zoom, so floating-point
   // rounding never leaves a 1px gutter that would let the image be dragged.
   const minZoom = capture ? Math.min(VP_W / capture.width, 1) : 1;
-  const atMin = capture && zoom <= minZoom + 0.001;
+  const atMin = capture ? zoom <= minZoom + 0.001 : false;
   const dispW = atMin ? VP_W : imgW;
   const dispH = atMin ? Math.round(capture!.height * minZoom) : imgH;
 

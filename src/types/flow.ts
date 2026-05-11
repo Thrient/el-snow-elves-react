@@ -4,6 +4,7 @@ import type { FullTask, Step } from "@/types/task";
 export const STEP_NODE = "stepNode";
 
 export interface StepNodeData {
+  [key: string]: unknown;
   stepName: string;
   action?: string;
   description?: string;
@@ -12,6 +13,7 @@ export interface StepNodeData {
 }
 
 export interface StepEdgeData {
+  [key: string]: unknown;
   flowType: "success" | "failure" | "next";
 }
 

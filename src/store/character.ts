@@ -48,7 +48,7 @@ export const useCharacterStore = create<State>((set, get) => ({
         },
       ],
     })),
-  update: (data: Character) =>
+  update: (data: Partial<Character> & { hwnd: string }) =>
     set((state) => ({
       characters: state.characters.map((character) =>
         character.hwnd === data.hwnd ? { ...character, ...data } : character

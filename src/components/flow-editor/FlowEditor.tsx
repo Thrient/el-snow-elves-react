@@ -19,7 +19,6 @@ interface Props {
   edges: Edge<StepEdgeData>[];
   onNodesChange: (nodes: Node<StepNodeData>[]) => void;
   onEdgesChange: (edges: Edge<StepEdgeData>[]) => void;
-  onConnect: (conn: Connection) => void;
   onNodeClick: (nodeId: string) => void;
   onCreateStep: (x: number, y: number, isCommon: boolean) => void;
   onNodesDelete?: (ids: string[]) => void;
@@ -29,18 +28,18 @@ const nodeTypes = { stepNode: StepNode };
 const edgeTypes = { step: StepEdge };
 
 const FlowEditor: FC<Props> = ({
-  nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeClick, onCreateStep, onNodesDelete,
+  nodes, edges, onNodesChange, onEdgesChange, onNodeClick, onCreateStep, onNodesDelete,
 }) => {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const rfRef = useRef<HTMLDivElement>(null);
-  const rfInstance = useRef<ReactFlowInstance<StepNodeData, StepEdgeData>>(null);
+  const rfInstance = useRef<ReactFlowInstance<Node<StepNodeData>, Edge<StepEdgeData>>>(null);
 
   const handleNodesChange = useCallback(
-    (changes: NodeChange[]) => { onNodesChange(applyNodeChanges(changes, nodes) as Node<StepNodeData>[]); },
+    (changes: NodeChange[]) => { onNodesChange(applyNodeChanges(changes, nodes) as unknown as Node<StepNodeData>[]); },
     [nodes, onNodesChange],
   );
   const handleEdgesChange = useCallback(
-    (changes: EdgeChange[]) => { onEdgesChange(applyEdgeChanges(changes, edges) as Edge<StepEdgeData>[]); },
+    (changes: EdgeChange[]) => { onEdgesChange(applyEdgeChanges(changes, edges) as unknown as Edge<StepEdgeData>[]); },
     [edges, onEdgesChange],
   );
   const handleConnect = useCallback(
@@ -66,8 +65,8 @@ const FlowEditor: FC<Props> = ({
     markerEnd: { type: MarkerType.ArrowClosed as const },
   }), []);
 
-  const handlePaneContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
+  const handlePaneContextMenu = useCallback((e: React.MouseEvent | MouseEvent) => {
+    if ("preventDefault" in e) e.preventDefault();
     if (!rfRef.current) return;
     const rect = rfRef.current.getBoundingClientRect();
     setMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });

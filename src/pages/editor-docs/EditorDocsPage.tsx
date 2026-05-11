@@ -1,7 +1,6 @@
 import { type FC, type ReactNode, useEffect, useState, useRef, useCallback } from "react";
 import { Typography, Tag, Divider } from "antd";
 import {
-  BookOutlined,
   HomeOutlined,
   BuildOutlined,
   ApartmentOutlined,
@@ -27,23 +26,6 @@ const InlineCode: FC<{ children: string }> = ({ children }) => (
     {children}
   </code>
 );
-
-const CodeBlock: FC<{ children: string; lang?: string }> = ({ children, lang = "json" }) => (
-  <div className="rounded-xl overflow-hidden border border-[#e8eaed] my-4 shadow-sm">
-    <div className="flex items-center justify-between px-4 py-2 bg-[#f8f9fa] border-b border-[#e8eaed]">
-      <span className="text-[11px] font-semibold text-[#5f6368] uppercase tracking-wider">{lang}</span>
-      <div className="flex gap-1.5">
-        <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
-        <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
-        <span className="w-2.5 h-2.5 rounded-full bg-[#28ca41]" />
-      </div>
-    </div>
-    <pre className="bg-[#1e1e1e] text-[#d4d4d4] p-4 m-0 text-[13px] leading-relaxed overflow-auto font-mono text-left whitespace-pre">
-      {children}
-    </pre>
-  </div>
-);
-
 const Callout: FC<{ type: "tip" | "warn" | "info"; title?: string; children: ReactNode }> = ({ type, title, children }) => {
   const config = {
     tip:  { bg: "bg-emerald-50", border: "border-emerald-200", icon: <BulbOutlined className="text-emerald-600" />, title: title ?? "提示" },

@@ -1,9 +1,10 @@
-import type { FC } from "react";
+import { useRef, type FC } from "react";
 import { useState } from "react";
 import {
   PlusOutlined, EditOutlined, ProfileOutlined,
+  ExportOutlined, ImportOutlined,
 } from "@ant-design/icons";
-import { Button, Space, Table, Tag } from "antd";
+import { Button, Space, Table, Tag, message } from "antd";
 import TaskConfigModal from "@/components/task-config-modal/TaskConfigModal.tsx";
 import type { ColumnsType } from "antd/es/table";
 import type { Task } from "@/types/task.ts";
@@ -17,9 +18,51 @@ const TaskPage: FC = () => {
   const taskList = useTaskStore((s) => s.taskList);
   const loading = useTaskStore((s) => s.loading);
   const updateTaskValues = useTaskStore((s) => s.updateTaskValues);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [configOpen, setConfigOpen] = useState(false);
   const [configTask, setConfigTask] = useState<Task | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const handleExport = async (task: Task) => {
+    try {
+      const result = await window.pywebview?.api.emit("API:TASK:EXPORT", task.id);
+      if (!result) return;
+      if (result.error) { message.error(result.error); return; }
+      if (result.cancelled) return;
+      if (result.success) { message.success(`导出成功：${result.path}`); }
+    } catch { message.error("导出失败"); }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.slice(result.indexOf(",") + 1));
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      const result = await window.pywebview?.api.emit("API:TASK:IMPORT", base64);
+      if (result?.error) {
+        message.error(result.error);
+      } else if (result?.name) {
+        message.success(`导入成功：${result.name} v${result.version}（${result.author}）`);
+        useTaskStore.getState().loadTasks();
+      } else {
+        message.error("导入失败：未知错误");
+      }
+    } catch { message.error("导入失败"); }
+    finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const openConfig = (task: Task) => {
     setConfigTask(task);
@@ -97,7 +140,7 @@ const TaskPage: FC = () => {
     {
       title: '操作',
       key: 'action',
-      width: 180,
+      width: 240,
       render: (_, record) => (
         <Space size={8}>
           <Button
@@ -120,6 +163,13 @@ const TaskPage: FC = () => {
           >
             配置
           </Button>
+          <Button
+            size="small"
+            icon={<ExportOutlined />}
+            onClick={() => handleExport(record)}
+          >
+            导出
+          </Button>
         </Space>
       ),
     },
@@ -138,6 +188,9 @@ const TaskPage: FC = () => {
             {taskList.length}
           </span>
         </div>
+        <Button icon={<ImportOutlined />} loading={importing} onClick={() => fileInputRef.current?.click()}>
+          导入
+        </Button>
       </div>
 
       <div className="flex-1 min-h-0">
@@ -159,6 +212,14 @@ const TaskPage: FC = () => {
         task={configTask}
         onClose={closeConfig}
         onSave={handleConfigSave}
+      />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".zip"
+        className="hidden"
+        onChange={handleImportFile}
       />
     </div>
   )

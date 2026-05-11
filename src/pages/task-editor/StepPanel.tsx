@@ -3,7 +3,7 @@ import { AutoComplete, Button, Input, InputNumber, Select, Tooltip, message } fr
 import { CloseOutlined, CheckOutlined, ArrowRightOutlined, DeleteOutlined, LeftOutlined, BugOutlined, PictureOutlined, ReloadOutlined, ApartmentOutlined, PlusOutlined } from "@ant-design/icons";
 import type { Step } from "@/types/task";
 import type { EditorCtx } from "./constants";
-import { ACTION_OPTS, ACTIONS_WITH_TEMPLATES, ACTION_PARAMS, PARAM_META, PLAIN_VALUE_PARAMS } from "./constants";
+import { ACTION_OPTS, ACTIONS_WITH_TEMPLATES, ACTION_PARAMS, PARAM_META } from "./constants";
 import SubflowModalItem from "./SubflowModalItem";
 import PosInput from "./PosInput";
 import PreprocessEditor from "./PreprocessEditor";
@@ -478,6 +478,7 @@ const StepPanel: FC<Props> = ({ stepName, step, isCommon, ctx, onClose, onRename
           </div>
         ) : (
           /* ── Expanded section ── */
+          card && (
           <div className="rounded-xl border border-[#eef0f2] bg-white overflow-hidden">
             {/* Section header with back button */}
             <div className="flex items-center gap-2 px-3 py-1.5" style={{ background: card.light }}>
@@ -577,6 +578,7 @@ const StepPanel: FC<Props> = ({ stepName, step, isCommon, ctx, onClose, onRename
                 )}
               </div>
             </div>
+          )
         )}
       </div>
     </div>

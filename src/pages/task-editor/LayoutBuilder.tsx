@@ -324,7 +324,6 @@ const LayoutBuilder: FC<LayoutBuilderProps> = ({ initialLayout = [], initialValu
             unboundVars.map(({ key, value, type }) => {
               const typeIcon = type === "number" ? "#" : type === "boolean" ? "⇄" : "Aa";
               const typeColor = type === "number" ? "#10b981" : type === "boolean" ? "#f59e0b" : "#6366f1";
-              const typeBg = type === "number" ? "#ecfdf5" : type === "boolean" ? "#fffbeb" : "#eef2ff";
               const valStr = value === null || value === undefined ? "" : String(value);
 
               return (
