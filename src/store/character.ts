@@ -10,7 +10,6 @@ let _executeUidCounter = 0
 
 type Character = {
   character: string
-  preview: string
   hwnd: string
   running: boolean
   opacity: number
@@ -23,7 +22,7 @@ type State = {
   selectedHwnd: string | null
   add: (data: Omit<Character, 'executeList'> & { executeList: ExecuteItem[] }) => void
   remove: (hwnd: string) => void
-  update: (data: Character) => void
+  update: (data: Partial<Character> & { hwnd: string }) => void
   popExecute: (hwnd: string) => ExecuteItem | undefined
   setSelectedHwnd: (hwnd: string | null) => void
   pushExecute: (hwnd: string, item: ExecuteItem) => void

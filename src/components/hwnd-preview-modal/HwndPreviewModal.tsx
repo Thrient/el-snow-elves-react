@@ -11,7 +11,7 @@ export interface HwndImage {
 interface Props {
   open?: boolean
   onClose?: () => void
-  onSelect?: (hwnd: string, base64: string) => void
+  onSelect?: (hwnd: string) => void
 }
 
 const HwndPreviewModal: FC<Props> = (props) => {
@@ -37,7 +37,7 @@ const HwndPreviewModal: FC<Props> = (props) => {
 
   const handleClick = (item: HwndImage) => {
     onClose()
-    onSelect(item.hwnd, item.base64)
+    onSelect(item.hwnd)
   }
 
   return (

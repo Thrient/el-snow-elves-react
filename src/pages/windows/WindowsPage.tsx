@@ -1,12 +1,10 @@
 import  { type FC } from "react";
 import { useState } from "react";
 import {
-  CameraOutlined,
   ClearOutlined,
   CloseOutlined,
   DesktopOutlined,
   MinusCircleOutlined,
-  PictureOutlined,
   PlayCircleOutlined,
   PauseCircleOutlined,
   PlusOutlined,
@@ -28,7 +26,6 @@ const WindowsPage: FC = () => {
   const characterStore = useCharacterStore();
   const [modalOpen, setModalOpen] = useState(false);
 
-  const [screenshotFlash, setScreenshotFlash] = useState(false);
   const [dragUid, setDragUid] = useState<number | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [configTask, setConfigTask] = useState<Task | null>(null);
@@ -185,7 +182,7 @@ const WindowsPage: FC = () => {
                 const state = useCharacterStore.getState();
                 const ch = state.characters.find((c) => c.hwnd === hwnd);
                 if (ch) {
-                  characterStore.update({ ...ch, running: !ch.running });
+                  characterStore.update({ hwnd, running: !ch.running });
                 }
               });
             }}
@@ -220,70 +217,26 @@ const WindowsPage: FC = () => {
             <div className="flex gap-5 h-full">
               {/* ---- Left: main panel ---- */}
               <div className="flex-1 flex flex-col gap-4 min-w-0">
-                {/* Preview card */}
-                <div className="relative flex-1 min-h-0 rounded-xl border border-[#eef0f2] bg-[#fafbfc] overflow-hidden group">
-                  {selectedCharacter.preview ? (
-                    <img
-                      src={selectedCharacter.preview}
-                      alt="game preview"
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-3">
-                      <div className="w-14 h-14 rounded-2xl bg-[#f0f2f5] flex items-center justify-center">
-                        <PictureOutlined className="text-xl text-[#b0b8c4]" />
-                      </div>
-                      <span className="text-[13px] text-[#b0b8c4]">窗口预览</span>
-                    </div>
-                  )}
-
-                  {/* HWND badge */}
-                  <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/55 backdrop-blur-sm text-[11px] text-white font-mono tracking-wide">
-                    {selectedCharacter.hwnd}
-                  </div>
-
-                  {/* Status indicator */}
-                  <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/55 backdrop-blur-sm">
-                    <span className={`w-2 h-2 rounded-full ${selectedCharacter.running ? "bg-green-400 shadow-[0_0_6px_rgba(82,196,26,0.6)]" : "bg-gray-400"}`} />
-                    <span className="text-[11px] text-white font-medium">{selectedCharacter.running ? "运行中" : "已停止"}</span>
-                  </div>
+                {/* Status bar */}
+                <div className="shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-[#eef0f2] bg-[#fafbfc]">
+                  <span className="text-[11px] text-[#8b8fa3]">当前任务</span>
+                  <span className={`text-[12px] truncate font-medium ${selectedCharacter.currentTask ? "text-[#374151]" : "text-[#b0b8c4]"}`}>
+                    {selectedCharacter.currentTask ?? "无任务"}
+                  </span>
                 </div>
 
-                {/* ---- Action cards row ---- */}
-                <div className="flex gap-4 shrink-0">
-                  {/* Screenshot */}
-                  <div
-                    className={`flex-1 flex items-center gap-4 px-5 py-4 rounded-xl border transition-all duration-200 cursor-pointer select-none ${
-                      screenshotFlash
-                        ? "border-[#1677ff] bg-[#eef2ff] scale-[0.97] shadow-[0_0_0_3px_rgba(22,119,255,0.15)]"
-                        : "border-[#eef0f2] bg-white hover:border-[#d0d4dd] hover:shadow-sm"
-                    }`}
-                    onClick={() => {
-                      if (!characterStore.selectedHwnd) return;
-                      setScreenshotFlash(true);
-                      setTimeout(() => setScreenshotFlash(false), 250);
-                      window.pywebview?.api.emit("API:SCRIPT:SCREENSHOT", characterStore.selectedHwnd);
-                    }}
-                  >
-                    <div className="w-9 h-9 rounded-lg bg-[#eef2ff] flex items-center justify-center shrink-0">
-                      <CameraOutlined className="text-base text-[#1677ff]" />
-                    </div>
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-[13px] text-[#1a1a2e] font-semibold">截图</span>
-                      <span className="text-[11px] text-[#8b8fa3]">捕获当前窗口画面</span>
-                    </div>
-                  </div>
-
+                {/* Action cards — add new cards here */}
+                <div className="flex-1 flex flex-wrap gap-4 content-start">
                   {/* Opacity */}
-                  <div className="flex-1 flex items-center gap-4 px-5 py-4 rounded-xl border border-[#eef0f2] bg-white hover:border-[#d0d4dd] hover:shadow-sm transition-all duration-200">
+                  <div className="w-fit flex items-center gap-4 px-5 py-4 rounded-xl border border-[#eef0f2] bg-white hover:border-[#d0d4dd] hover:shadow-sm transition-all duration-200">
                     <CircularSlider
-                      size={44}
-                      strokeWidth={5}
+                      size={72}
+                      strokeWidth={7}
                       max={255}
                       value={selectedCharacter?.opacity ?? 255}
                       onChange={(v) => {
                         if (selectedCharacter) {
-                          characterStore.update({ ...selectedCharacter, opacity: v });
+                          characterStore.update({ hwnd: selectedCharacter.hwnd, opacity: v });
                           window.pywebview?.api.emit("API:SCRIPT:SET_OPACITY", selectedCharacter.hwnd, v);
                         }
                       }}
@@ -291,19 +244,6 @@ const WindowsPage: FC = () => {
                     <div className="flex flex-col gap-0.5 min-w-0">
                       <span className="text-[13px] text-[#1a1a2e] font-semibold">透明度</span>
                       <span className="text-[11px] text-[#8b8fa3] tabular-nums">{selectedCharacter?.opacity ?? 255} / 255</span>
-                    </div>
-                  </div>
-
-                  {/* Current task */}
-                  <div className="flex-1 flex items-center gap-4 px-5 py-4 rounded-xl border border-[#eef0f2] bg-white">
-                    <div className="w-9 h-9 rounded-lg bg-[#f0faf4] flex items-center justify-center shrink-0">
-                      <PlayCircleOutlined className="text-base text-[#52c41a]" />
-                    </div>
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-[13px] text-[#1a1a2e] font-semibold">当前任务</span>
-                      <span className={`text-[11px] truncate ${selectedCharacter.currentTask ? "text-[#374151] font-medium" : "text-[#b0b8c4]"}`}>
-                        {selectedCharacter.currentTask ?? "无任务"}
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -373,12 +313,11 @@ const WindowsPage: FC = () => {
       {modalOpen ? (
         <HwndPreviewModal
           onClose={closeModal}
-          onSelect={(hwnd: string, base64: string) => {
+          onSelect={(hwnd: string) => {
             window.pywebview?.api.emit("API:SCRIPT:BIND", hwnd)
               .then(() => {
                 characterStore.add({
                   character: "",
-                  preview: base64,
                   hwnd: hwnd,
                   running: true,
                   opacity: 255,
