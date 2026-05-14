@@ -11,6 +11,8 @@ const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
 const DocsPage = lazy(() => import('@/pages/docs/DocsPage'));
 const EditorDocsPage = lazy(() => import('@/pages/editor-docs/EditorDocsPage'));
 const LogsPage = lazy(() => import('@/pages/logs/LogsPage'));
+const PlansPage = lazy(() => import('@/pages/plans/PlansPage'));
+const AccountsPage = lazy(() => import('@/pages/accounts/AccountsPage'));
 
 
 export const router = createHashRouter([
@@ -75,6 +77,22 @@ export const router = createHashRouter([
         element: (
           <Suspense fallback={<div>加载中...</div>}>
             <LogsPage/>
+          </Suspense>
+        )
+      },
+      {
+        path: '/plans',
+        element: (
+          <Suspense fallback={<div>加载中...</div>}>
+            <PlansPage/>
+          </Suspense>
+        )
+      },
+      {
+        path: '/accounts',
+        element: (
+          <Suspense fallback={<div>加载中...</div>}>
+            <AccountsPage/>
           </Suspense>
         )
       }

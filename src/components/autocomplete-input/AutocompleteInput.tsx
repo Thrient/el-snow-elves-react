@@ -16,6 +16,7 @@ interface Props {
     taskName?: string;
     version?: string;
     taskId?: string;
+    variables?: string[];
   };
   placeholder?: string;
   disabled?: boolean;
@@ -74,6 +75,14 @@ const AutocompleteInput: FC<Props> = ({
           const items: { value: string; label: string }[] = [
             { value: "{result}", label: "{result} — 当前步骤返回值" },
           ];
+          if (context.variables) {
+            for (const key of context.variables) {
+              items.push({
+                value: `{${key}}`,
+                label: `{${key}} — 任务变量`,
+              });
+            }
+          }
           try {
             const settings = await window.pywebview?.api.emit("API:SETTINGS:LOAD");
             if (settings?.values) {

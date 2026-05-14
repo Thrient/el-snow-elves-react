@@ -94,21 +94,31 @@ const TaskEditorPage: FC = () => {
     [editor.currentTask?.values],
   );
 
-  const variableOptions = useMemo(() => {
-    const opts: { value: string; label: string }[] = [...BUILTIN_VARS];
-    for (const k of configKeys) opts.push({ value: `{CONFIG.${k}}`, label: `{CONFIG.${k}} — 全局设置` });
-    for (const k of taskValueKeys) opts.push({ value: `{${k}}`, label: `{${k}} — 任务配置` });
-    for (const v of setVars) opts.push({ value: `{${v}}`, label: `{${v}} — set 变量` });
-    const steps = editor.currentTask?.steps ?? {};
-    const common = editor.currentTask?.common ?? {};
-    for (const k of allStepNames) {
-      const isGlobal = !steps[k] && !common[k];
-      const source = steps[k] ?? common[k];
-      const suffix = isGlobal ? "公共步骤" : "步骤";
-      opts.push({ value: k, label: source?.description ? `${k} — ${source.description} — ${suffix}` : `${k} — ${suffix}` });
-    }
-    return opts;
-  }, [configKeys, taskValueKeys, setVars, allStepNames, editor.currentTask]);
+  const builtinVars = BUILTIN_VARS;
+  const configVars = useMemo(() =>
+    configKeys.map((k) => ({ value: `{CONFIG.${k}}`, label: `{CONFIG.${k}} — 全局设置` })),
+    [configKeys]);
+  const taskValueVars = useMemo(() =>
+    taskValueKeys.map((k) => ({ value: `{${k}}`, label: `{${k}} — 任务配置` })),
+    [taskValueKeys]);
+  const setVarOptions = useMemo(() =>
+    setVars.map((v) => ({ value: `{${v}}`, label: `{${v}} — set 变量` })),
+    [setVars]);
+
+  const makeStepOpts = (names: string[], source: Record<string, Step>, suffix: string) =>
+    names.map((k) => {
+      const s = source[k];
+      return { value: k, label: s?.description ? `${k} — ${s.description} — ${suffix}` : `${k} — ${suffix}` };
+    });
+  const taskSteps = useMemo(() =>
+    makeStepOpts(taskStepNames, editor.currentTask?.steps ?? {}, "任务步骤"),
+    [taskStepNames, editor.currentTask?.steps]);
+  const taskCommonSteps = useMemo(() =>
+    makeStepOpts(taskCommonNames, editor.currentTask?.common ?? {}, "任务公共步骤"),
+    [taskCommonNames, editor.currentTask?.common]);
+  const globalCommonSteps = useMemo(() =>
+    makeStepOpts(globalCommonNames.filter((n) => !taskStepNames.includes(n) && !taskCommonNames.includes(n)), {}, "全局公共步骤"),
+    [globalCommonNames, taskStepNames, taskCommonNames]);
 
   /** 从 args 图片名中提取 {参数名:默认值} 模板参数 */
   const stepParamsMap = useMemo(() => {
@@ -132,7 +142,13 @@ const TaskEditorPage: FC = () => {
     return m;
   }, [editor.currentTask?.steps, editor.currentTask?.common]);
 
-  const ctx: EditorCtx = { stepKeys: allStepNames, variableOptions, stepParamsMap, hwnd: characterStore.selectedHwnd ?? '', taskName: editor.currentTask?.name, version: editor.currentTask?.version };
+  const ctx: EditorCtx = {
+    stepKeys: allStepNames,
+    builtinVars, configVars, taskValueVars, setVars: setVarOptions,
+    taskSteps, taskCommonSteps, globalCommonSteps,
+    stepParamsMap, hwnd: characterStore.selectedHwnd ?? '',
+    taskName: editor.currentTask?.name, version: editor.currentTask?.version,
+  };
 
   const drawerData = drawerStep && editor.currentTask
     ? (editor.currentTask[drawerStep.isCommon ? "common" : "steps"] as Record<string, Step>)?.[drawerStep.name] : null;
@@ -382,26 +398,20 @@ const TaskEditorPage: FC = () => {
             <StepPanel stepName={drawerStep.name} step={drawerData} isCommon={drawerStep.isCommon} ctx={ctx}
               onClose={() => setDrawerStep(null)}
               onRename={(nn) => {
-                if (!editor.currentTask) return;
                 const oldName = drawerStep.name;
-                const key = drawerStep.isCommon ? "common" : "steps";
-                const steps = { ...editor.currentTask[key] };
-                steps[nn] = steps[oldName]; delete steps[oldName];
-                useEditorStore.setState({ currentTask: { ...editor.currentTask, [key]: steps }, isDirty: true });
+                editor.renameStep(oldName, nn, drawerStep.isCommon);
                 setDrawerStep({ name: nn, isCommon: drawerStep.isCommon });
-                setFlowNodes((prev) => prev.map((n) =>
-                  n.id === oldName ? { ...n, id: nn, data: { ...n.data, stepName: nn } } : n
-                ));
-                setFlowEdges((prev) => prev.map((e) => {
-                  const src = e.source === oldName ? nn : e.source;
-                  const tgt = e.target === oldName ? nn : e.target;
-                  if (src === e.source && tgt === e.target) return e;
-                  const idParts = e.id.split("-");
-                  const newId = idParts.includes(oldName)
-                    ? idParts.map((p) => p === oldName ? nn : p).join("-")
-                    : e.id;
-                  return { ...e, id: newId, source: src, target: tgt };
-                }));
+                setFlowNodes((prev) => {
+                  const positions: Record<string, { x: number; y: number }> = {};
+                  for (const n of prev) positions[n.id] = { ...n.position };
+                  if (positions[oldName]) { positions[nn] = positions[oldName]; delete positions[oldName]; }
+                  setSavedPositions((sp) => ({ ...sp, ...positions }));
+                  const task = useEditorStore.getState().currentTask;
+                  if (!task) return prev;
+                  const { nodes, edges } = taskToFlow(task, positions);
+                  setFlowEdges(edges);
+                  return nodes;
+                });
               }}
               onUpdate={(field, value) => {
                 if (!editor.currentTask) return;

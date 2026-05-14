@@ -3,9 +3,11 @@ import { AutoComplete, Button, Input, InputNumber, Select, Tooltip, message } fr
 import { CloseOutlined, CheckOutlined, ArrowRightOutlined, DeleteOutlined, LeftOutlined, BugOutlined, PictureOutlined, ReloadOutlined, ApartmentOutlined, PlusOutlined } from "@ant-design/icons";
 import type { Step } from "@/types/task";
 import type { EditorCtx } from "./constants";
-import { ACTION_OPTS, ACTIONS_WITH_TEMPLATES, ACTION_PARAMS, PARAM_META } from "./constants";
+import { ACTION_OPTS, ACTIONS_WITH_TEMPLATES, ACTION_PARAMS, PARAM_META, REQUIRED_PARAMS } from "./constants";
 import SubflowModalItem from "./SubflowModalItem";
 import PosInput from "./PosInput";
+import BoxInput from "./BoxInput";
+import BoxPickerModal from "@/components/box-picker/BoxPickerModal";
 import PreprocessEditor from "./PreprocessEditor";
 import KeyInput from "@/components/settings-field/components/KeyInput";
 import CoordPickerModal from "@/components/coord-picker/CoordPickerModal";
@@ -49,8 +51,8 @@ const CARDS: { key: CardKey; label: string; color: string; light: string; desc: 
 
 // ---- Inline sub-editors ----
 
-const FlowEditor: FC<{ step: Step; stepKeys: string[]; stepName: string; onUpdate: Props["onUpdate"] }> =
-  ({ step, stepKeys, stepName, onUpdate }) => {
+const FlowEditor: FC<{ step: Step; stepOpts: { value: string; label: string }[]; stepName: string; onUpdate: Props["onUpdate"] }> =
+  ({ step, stepOpts, stepName, onUpdate }) => {
     const items = [
       { k: "success" as const, label: "成功跳转", hint: "执行成功后跳转", color: "#16a34a", icon: <CheckOutlined /> },
       { k: "failure" as const, label: "失败跳转", hint: "执行失败后跳转", color: "#dc2626", icon: <CloseOutlined /> },
@@ -71,7 +73,7 @@ const FlowEditor: FC<{ step: Step; stepKeys: string[]; stepName: string; onUpdat
               <Select className="flex-1 min-w-0 ml-auto" size="small" allowClear showSearch
                 placeholder="选择目标步骤" popupMatchSelectWidth={false}
                 value={(step as any)[k] || undefined}
-                options={stepKeys.filter(sk => sk !== stepName).map(sk => ({ value: sk, label: sk }))}
+                options={stepOpts.filter(o => o.value !== stepName)}
                 onChange={(v) => onUpdate(k, v ?? "")} />
             </div>
           </div>
@@ -82,12 +84,29 @@ const FlowEditor: FC<{ step: Step; stepKeys: string[]; stepName: string; onUpdat
 
 const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"] }> = ({ step, ctx, onUpdate }) => {
   const [coordOpen, setCoordOpen] = useState(false);
+  const [boxOpen, setBoxOpen] = useState(false);
   const [templateOptions, setTemplateOptions] = useState<{ value: string; label: string }[]>([]);
   const params = step.params ?? {};
   const args = (params.args as string[]) ?? [];
-  const other = Object.keys(params).filter(k => k !== "args");
+  const required = step.action ? (REQUIRED_PARAMS[step.action] ?? []) : [];
+  const other = Object.keys(params).filter(k => k !== "args").sort((a, b) => {
+    const aReq = required.includes(a) ? 0 : 1;
+    const bReq = required.includes(b) ? 0 : 1;
+    return aReq - bReq;
+  });
   const showArgs = step.action ? ACTIONS_WITH_TEMPLATES.has(step.action) : false;
   const allowed = step.action ? (ACTION_PARAMS[step.action] ?? []) : [];
+
+  // 自动注入必填参数
+  useEffect(() => {
+    const missing = required.filter(k => params[k] === undefined);
+    if (missing.length > 0) {
+      const p = { ...params };
+      for (const k of missing) p[k] = "";
+      onUpdate("params", p);
+    }
+  }, [step.action]);
+
   const canAdd = allowed.filter(k => params[k] === undefined);
 
   useEffect(() => {
@@ -115,8 +134,27 @@ const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"]
           onRemove={() => { const p = { ...params }; delete p.preprocess; onUpdate("params", p); }} />
       );
     }
+    if (key === "box") {
+      return <BoxInput params={params} onUpdate={onUpdate} hwnd={ctx.hwnd} onBoxOpen={() => setBoxOpen(true)} />;
+    }
     if (key === "pos") {
       return <PosInput params={params} onUpdate={onUpdate} hwnd={ctx.hwnd} onCoordOpen={() => setCoordOpen(true)} />;
+    }
+    if (key === "hwnd") {
+      return (
+        <AutoComplete
+          size="small"
+          className="w-full"
+          value={(value as string) ?? ""}
+          onChange={(v) => onUpdate("params", { ...params, hwnd: v ?? "" })}
+          options={[...ctx.builtinVars, ...ctx.configVars, ...ctx.taskValueVars, ...ctx.setVars]}
+          placeholder="{hwnd}"
+          allowClear
+          filterOption={(input, option) =>
+            option?.label?.toLowerCase().includes(input.toLowerCase()) ?? false
+          }
+        />
+      );
     }
     if (key === "click_mode") {
       return (
@@ -133,10 +171,42 @@ const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"]
           onChange={(v) => onUpdate("params", { ...params, click_mode: v ?? "" })} />
       );
     }
+    if (key === "text") {
+      return (
+        <AutoComplete
+          size="small"
+          className="w-full"
+          value={(value as string) ?? ""}
+          onChange={(v) => onUpdate("params", { ...params, text: v ?? "" })}
+          options={[...ctx.builtinVars, ...ctx.configVars, ...ctx.taskValueVars, ...ctx.setVars]}
+          placeholder="输入文本，支持 {变量}"
+          filterOption={(input, option) =>
+            option?.label?.toLowerCase().includes(input.toLowerCase()) ?? false
+          }
+        />
+      );
+    }
     if (key === "key") {
       return (
         <KeyInput value={(value as string) ?? ""}
-          onChange={(v) => onUpdate("params", { ...params, key: v })} />
+          onChange={(v) => onUpdate("params", { ...params, key: v })}
+          varOptions={[...ctx.builtinVars, ...ctx.configVars, ...ctx.taskValueVars, ...ctx.setVars]} />
+      );
+    }
+    if (key === "account_name") {
+      return (
+        <AutoComplete
+          size="small"
+          style={{ width: 160 }}
+          value={value as string}
+          onChange={(v) => onUpdate("params", { ...params, account_name: v })}
+          options={[...ctx.builtinVars, ...ctx.configVars, ...ctx.taskValueVars, ...ctx.setVars]}
+          placeholder="{account_name}"
+          allowClear
+          filterOption={(input, option) =>
+            option?.label?.toLowerCase().includes(input.toLowerCase()) ?? false
+          }
+        />
       );
     }
     // Number params
@@ -157,12 +227,11 @@ const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"]
           }} />
       );
     }
-    // box / plain text
+    // plain text fallback
     const raw = typeof value === "string" ? value : JSON.stringify(value);
     return (
       <Input size="small" className="font-mono text-[12px]" style={{ width: 140 }}
         value={raw}
-        placeholder={key === "box" ? "[x1, y1, x2, y2]" : ""}
         onChange={(e) => {
           let v: unknown = e.target.value;
           const n = Number(v);
@@ -205,8 +274,8 @@ const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"]
           return <div key={key}>{renderParamInput(key, params[key])}</div>;
         }
         const accentColor = meta?.color ?? "#9ca3af";
-        // pos needs more space for coordinate inputs
-        if (key === "pos") {
+        // pos / box / key / hwnd / text need more space
+        if (key === "pos" || key === "box" || key === "key" || key === "hwnd" || key === "text") {
           return (
             <div key={key} className="group rounded-xl border border-dashed bg-white transition-colors"
               style={{ borderColor: `${accentColor}4d`, background: `linear-gradient(135deg, ${accentColor}0a, #fff)` }}>
@@ -219,7 +288,7 @@ const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"]
                     <span className="text-[12px] text-[#374151] select-none">{meta?.label ?? key}</span>
                   </div>
                 </Tooltip>
-                <button onClick={() => { const p = { ...params }; delete p.pos; onUpdate("params", p); }}
+                <button onClick={() => { const p = { ...params }; delete p[key]; onUpdate("params", p); }}
                   className="text-[#c0c4cc] hover:text-[#ff4d4f] opacity-0 group-hover:opacity-100 transition-all text-xs shrink-0 border-0 bg-transparent cursor-pointer">×</button>
               </div>
               <div className="px-3.5 pb-2.5">
@@ -285,6 +354,9 @@ const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"]
       {ctx.hwnd && <CoordPickerModal open={coordOpen} hwnd={ctx.hwnd}
         onClose={() => setCoordOpen(false)}
         onPick={(x, y) => onUpdate("params", { ...params, pos: [x, y] })} />}
+      {ctx.hwnd && <BoxPickerModal open={boxOpen} hwnd={ctx.hwnd}
+        onClose={() => setBoxOpen(false)}
+        onPick={(x1, y1, x2, y2) => onUpdate("params", { ...params, box: [x1, y1, x2, y2] })} />}
     </div>
   );
 };
@@ -293,11 +365,32 @@ const SubListEditor: FC<{
   list: any[]; ctx: EditorCtx; isKeyValue?: boolean; color: string; onChange: (v: any[]) => void;
 }> = ({ list, ctx, isKeyValue, color, onChange }) => {
   const arr = list ?? [];
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<number | null>(null);
+
+  const handleDragStart = (i: number) => setDragIdx(i);
+  const handleDragEnd = () => { setDragIdx(null); setDropTarget(null); };
+  const handleDragOver = (i: number, e: React.DragEvent) => {
+    e.preventDefault();
+    if (dragIdx !== null && dragIdx !== i) setDropTarget(i);
+  };
+  const handleDrop = (i: number) => {
+    if (dragIdx === null || dragIdx === i) return;
+    const u = [...arr];
+    const [moved] = u.splice(dragIdx, 1);
+    u.splice(i, 0, moved);
+    onChange(u);
+  };
+
   return (
     <div className="space-y-2">
       {arr.map((item, i) => isKeyValue ? (
-        <div key={i} className="group rounded-xl border border-dashed bg-white transition-colors"
-          style={{ borderColor: `${color}4d`, background: `linear-gradient(135deg, ${color}0a, #fff)` }}>
+        <div key={i} draggable
+          onDragStart={() => handleDragStart(i)} onDragEnd={handleDragEnd}
+          onDragOver={(e) => handleDragOver(i, e)} onDrop={() => handleDrop(i)}
+          className={`group rounded-xl border border-dashed bg-white transition-colors cursor-grab active:cursor-grabbing
+            ${dropTarget === i ? "border-indigo-400 shadow-md shadow-indigo-100 -translate-y-0.5" : ""}`}
+          style={{ borderColor: dropTarget === i ? "#818cf8" : `${color}4d`, background: `linear-gradient(135deg, ${color}0a, #fff)` }}>
           <div className="flex items-center gap-2 px-3.5 py-2">
             <span className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-semibold shrink-0"
               style={{ background: `${color}18`, color }}>{i + 1}</span>
@@ -305,15 +398,21 @@ const SubListEditor: FC<{
               onChange={(e) => { const u = [...arr]; u[i] = { ...u[i], name: e.target.value }; onChange(u); }} />
             <span className="font-mono text-[10px] text-[#8b8fa3] shrink-0">=</span>
             <AutoComplete className="flex-1" size="small" variant="borderless" placeholder="值" value={item.value as string}
-              options={ctx.variableOptions}
+              options={[...ctx.builtinVars, ...ctx.configVars, ...ctx.taskValueVars, ...ctx.setVars, ...ctx.taskSteps, ...ctx.taskCommonSteps, ...ctx.globalCommonSteps]}
               filterOption={(iv, opt) => opt?.label?.toLowerCase().includes(iv.toLowerCase()) ?? false}
               onChange={(v) => { const u = [...arr]; u[i] = { ...u[i], value: v }; onChange(u); }} />
+            <span className="text-[#c0c4cc] opacity-0 group-hover:opacity-100 transition-all shrink-0 text-[10px] select-none cursor-grab">⠿</span>
             <button onClick={() => onChange(arr.filter((_, j) => j !== i))}
               className="text-[#c0c4cc] hover:text-[#ff4d4f] opacity-0 group-hover:opacity-100 transition-all text-xs shrink-0 border-0 bg-transparent cursor-pointer">×</button>
           </div>
         </div>
       ) : (
-        <SubflowModalItem key={i} index={i} item={item} ctx={ctx} arr={arr} color={color} onChange={onChange} />
+        <div key={i} draggable
+          onDragStart={() => handleDragStart(i)} onDragEnd={handleDragEnd}
+          onDragOver={(e) => handleDragOver(i, e)} onDrop={() => handleDrop(i)}
+          className={dropTarget === i ? "rounded-xl ring-2 ring-indigo-400 ring-offset-1" : ""}>
+          <SubflowModalItem index={i} item={item} ctx={ctx} arr={arr} color={color} onChange={onChange} />
+        </div>
       ))}
       {arr.length === 0 && (
         <div className="text-center py-1">
@@ -384,7 +483,22 @@ const StepPanel: FC<Props> = ({ stepName, step, isCommon, ctx, onClose, onRename
           </div>
           <Select className="w-full" size="small" allowClear showSearch placeholder="选择动作…"
             value={step.action || undefined} popupMatchSelectWidth={false}
-            onChange={v => onUpdate("action", v ?? "")}
+            onChange={v => {
+              const newAction = v ?? "";
+              const allowed = newAction ? (ACTION_PARAMS[newAction] ?? []) : [];
+              const oldParams = (step.params ?? {}) as Record<string, unknown>;
+              const clean: Record<string, unknown> = {};
+              for (const k of Object.keys(oldParams)) {
+                if (k === "args" || allowed.includes(k)) clean[k] = oldParams[k];
+              }
+              // 必填参数自动注入
+              for (const k of (REQUIRED_PARAMS[newAction] ?? [])) {
+                if (!(k in clean)) clean[k] = "";
+              }
+              useEditorStore.getState().updateStep(stepName, {
+                ...step, action: newAction, params: clean,
+              }, isCommon);
+            }}
             options={ACTION_OPTS.map(o => ({
               ...o, label: <span className="flex items-center gap-2">
                 <code className="text-[11px] font-semibold text-[#1a1a2e] bg-[#f0f2f5] px-1.5 py-0.5 rounded">{o.label}</code>
@@ -495,7 +609,7 @@ const StepPanel: FC<Props> = ({ stepName, step, isCommon, ctx, onClose, onRename
             {/* Section body */}
             <div className="p-4">
                 {expanded === "flow" && (
-                  <FlowEditor step={step} stepKeys={ctx.stepKeys} stepName={stepName} onUpdate={onUpdate} />
+                  <FlowEditor step={step} stepOpts={[...ctx.taskSteps, ...ctx.taskCommonSteps, ...ctx.globalCommonSteps]} stepName={stepName} onUpdate={onUpdate} />
                 )}
                 {expanded === "params" && (
                   <ParamsEditor step={step} ctx={ctx} onUpdate={onUpdate} />
@@ -562,7 +676,7 @@ const StepPanel: FC<Props> = ({ stepName, step, isCommon, ctx, onClose, onRename
                     <div className="px-3.5 pb-3">
                       <Select className="w-full" size="small" allowClear showSearch placeholder="选择一个步骤作为模板"
                         value={step.extends || undefined} popupMatchSelectWidth={false}
-                        options={ctx.stepKeys.filter(k => k !== stepName).map(k => ({ value: k, label: k }))}
+                        options={[...ctx.taskSteps, ...ctx.taskCommonSteps, ...ctx.globalCommonSteps].filter(o => o.value !== stepName)}
                         onChange={v => onUpdate("extends", v ?? "")} />
                       {step.extends ? (
                         <div className="text-[10px] text-[#8b8fa3] leading-relaxed mt-2">

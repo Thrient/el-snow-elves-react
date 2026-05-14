@@ -176,8 +176,14 @@ const SubflowModalItem: FC<Props> = ({ index: i, item, ctx, arr, color = "#9ca3a
     return p ? Object.keys(p).map((k) => ({ value: k, label: k })) : [];
   }, [ctx.stepParamsMap, baseName]);
   const varOnlyOptions = useMemo(
-    () => ctx.variableOptions.filter((o) => !o.label.endsWith("— 步骤") && !o.label.endsWith("— 公共步骤")),
-    [ctx.variableOptions],
+    () => [...ctx.builtinVars, ...ctx.configVars, ...ctx.taskValueVars, ...ctx.setVars],
+    [ctx.builtinVars, ctx.configVars, ctx.taskValueVars, ctx.setVars],
+  );
+  const allOptions = useMemo(
+    () => [...ctx.builtinVars, ...ctx.configVars, ...ctx.taskValueVars,
+           ...ctx.setVars, ...ctx.taskSteps, ...ctx.taskCommonSteps, ...ctx.globalCommonSteps],
+    [ctx.builtinVars, ctx.configVars, ctx.taskValueVars,
+     ctx.setVars, ctx.taskSteps, ctx.taskCommonSteps, ctx.globalCommonSteps],
   );
 
   return (
@@ -188,7 +194,7 @@ const SubflowModalItem: FC<Props> = ({ index: i, item, ctx, arr, color = "#9ca3a
           style={{ background: `${color}18`, color }}>{i + 1}</span>
         <Select size="small" variant="borderless" className="flex-1 min-w-0 font-semibold" showSearch allowClear
           placeholder="选择步骤" value={baseName || undefined} popupMatchSelectWidth={false}
-          options={ctx.stepKeys.map((k) => ({ value: k, label: k }))} onChange={handleStepChange} />
+          options={[...ctx.taskSteps, ...ctx.taskCommonSteps, ...ctx.globalCommonSteps]} onChange={handleStepChange} />
         <div className="flex items-center gap-1 shrink-0 ml-auto">
           <span className="text-[10px] text-[#9ca3af]">×</span>
           <InputNumber size="small" variant="borderless" min={1} max={99} style={{ width: 36 }} value={repeatCount}
@@ -219,7 +225,7 @@ const SubflowModalItem: FC<Props> = ({ index: i, item, ctx, arr, color = "#9ca3a
                     }} />
                   <span className="text-[10px] text-[#9ca3af]">:</span>
                   <AutoComplete className="flex-1" size="small" placeholder="值"
-                    value={typeof val === "string" ? val : JSON.stringify(val)} options={ctx.variableOptions}
+                    value={typeof val === "string" ? val : JSON.stringify(val)} options={allOptions}
                     filterOption={(iv, opt) => opt?.label?.toLowerCase().includes(iv.toLowerCase()) ?? false}
                     onChange={(v) => { const next = [...argsEntries]; next[ei] = [key, v]; setArgs(next); }} />
                   <Button type="text" size="small" className="!text-[#d0d5dd] hover:!text-[#dc2626] shrink-0"

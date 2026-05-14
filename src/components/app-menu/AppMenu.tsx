@@ -10,6 +10,8 @@ import {
   BookOutlined,
   EditOutlined,
   ReadOutlined,
+  ScheduleOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 
 
@@ -53,6 +55,16 @@ const AppMenu: FC<Props> = ({ collapsed }) => {
       key: '/editor-docs',
       icon: <EditOutlined/>,
       label: '编辑教程',
+    },
+    {
+      key: '/accounts',
+      icon: <UserOutlined/>,
+      label: '账号管理',
+    },
+    {
+      key: '/plans',
+      icon: <ScheduleOutlined/>,
+      label: '计划任务',
     },
     {
       key: '/logs',

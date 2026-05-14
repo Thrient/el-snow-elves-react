@@ -13,6 +13,10 @@ import {
   PauseOutlined,
   CaretRightOutlined,
   BulbOutlined,
+  UserOutlined,
+  DesktopOutlined,
+  EditOutlined,
+  FormOutlined,
 } from "@ant-design/icons";
 
 export const ACTION_OPTS = [
@@ -21,8 +25,10 @@ export const ACTION_OPTS = [
   { value: "wait",           label: "wait",           desc: "等待模板出现" },
   { value: "wait_disappear", label: "wait_disappear", desc: "等待模板消失" },
   { value: "key_click",      label: "key_click",      desc: "发送按键" },
+  { value: "input",          label: "input",          desc: "输入文本" },
   { value: "mouse_click",    label: "mouse_click",    desc: "点击坐标" },
   { value: "set_character",  label: "set_character",  desc: "捕获角色头像" },
+  { value: "switch_account", label: "switch_account", desc: "切换游戏账号" },
   { value: "{True}",         label: "{True}",         desc: "无条件通过" },
 ];
 
@@ -49,29 +55,50 @@ export const PARAM_META: Record<string, ParamMeta> = {
   pre_delay:  { label: "操作前延迟",color: "#f97316", icon: <PauseOutlined />,         desc: "执行操作前等待的时间，确保界面稳定后再操作",                         range: "默认 1500 ms" },
   post_delay: { label: "操作后延迟",color: "#84cc16", icon: <CaretRightOutlined />,    desc: "执行操作后等待的时间，确保界面响应完成后再继续",                     range: "默认 1500 ms" },
   preprocess: { label: "图像预处理",color: "#8b5cf6", icon: <BulbOutlined />,          desc: "对截图的额外图像处理，提高特定场景下的匹配准确率。二值化、反转、自适应等独立开关组合" },
+  account_name: { label: "账号名称", color: "#1677ff", icon: <UserOutlined />,          desc: "已录制的账号名，用于登录时注入凭证。通常用变量 {account_name} 在任务配置中设定" },
+  hwnd:         { label: "目标窗口", color: "#6366f1", icon: <DesktopOutlined />,      desc: "操作的目标窗口句柄。默认 {hwnd} 为当前窗口，可填固定句柄或变量", range: "如 0x12345 或 {my_hwnd}" },
+  text:         { label: "输入文本", color: "#14b8a6", icon: <EditOutlined />,          desc: "模拟键盘逐字输入到窗口。支持 {变量} 表达式", range: "如 Hello World 或 {my_text}" },
 };
 
 export const ACTION_PARAMS: Record<string, string[]> = {
-  touch:          ["threshold", "click_mode", "box", "pos", "pre_delay", "post_delay", "seconds", "k", "preprocess"],
-  exits:          ["threshold", "seconds", "preprocess"],
-  wait:           ["threshold", "seconds", "preprocess"],
-  wait_disappear: ["threshold", "seconds", "preprocess"],
-  key_click:      ["key", "pre_delay", "post_delay"],
-  mouse_click:    ["pos", "pre_delay", "post_delay"],
-  set_character:  [],
+  touch:          ["threshold", "click_mode", "box", "pos", "x", "y", "pre_delay", "post_delay", "seconds", "k", "preprocess", "hwnd"],
+  exits:          ["threshold", "seconds", "preprocess", "hwnd"],
+  wait:           ["threshold", "seconds", "preprocess", "hwnd"],
+  wait_disappear: ["threshold", "seconds", "preprocess", "hwnd"],
+  key_click:      ["key", "pre_delay", "post_delay", "hwnd"],
+  input:          ["text", "pre_delay", "post_delay", "hwnd"],
+  mouse_click:    ["pos", "pre_delay", "post_delay", "hwnd"],
+  set_character:  ["hwnd"],
+  switch_account: ["account_name"],
   "{True}":       [],
+};
+
+/** 必填参数 — 切换动作时自动注入 */
+export const REQUIRED_PARAMS: Record<string, string[]> = {
+  key_click: ["key"],
+  input: ["text"],
+  mouse_click: ["pos"],
+  switch_account: ["account_name"],
 };
 
 export const ACTIONS_WITH_TEMPLATES = new Set(["touch", "exits", "wait", "wait_disappear"]);
 export const PLAIN_VALUE_PARAMS = new Set(["threshold", "seconds", "k", "pos", "box", "pre_delay", "post_delay"]);
 
 export const BUILTIN_VARS: { value: string; label: string }[] = [
-  { value: "{result}",  label: "{result} — 步骤返回值" },
+  { value: "{result}",    label: "{result} — 步骤返回值" },
+  { value: "{hwnd}",      label: "{hwnd} — 当前窗口句柄" },
+  { value: "{ChildHwnd}", label: "{ChildHwnd} — 子窗口句柄" },
 ];
 
 export interface EditorCtx {
   stepKeys: string[];
-  variableOptions: { value: string; label: string }[];
+  builtinVars: { value: string; label: string }[];
+  configVars: { value: string; label: string }[];
+  taskValueVars: { value: string; label: string }[];
+  setVars: { value: string; label: string }[];
+  taskSteps: { value: string; label: string }[];
+  taskCommonSteps: { value: string; label: string }[];
+  globalCommonSteps: { value: string; label: string }[];
   stepParamsMap: Record<string, Record<string, unknown>>;
   hwnd: string;
   taskName?: string;

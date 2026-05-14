@@ -207,6 +207,18 @@ const LayoutBuilder: FC<LayoutBuilderProps> = ({ initialLayout = [], initialValu
 
   /* ── confirm ── */
 
+  const deleteVar = useCallback((key: string) => {
+    setValues((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    // 同步清理 layout 中引用该变量的 cell
+    setLayout((prev) => cloneLayout(prev).map((row) =>
+      row.filter((cell) => cell.store !== key),
+    ).filter((row) => row.length > 0));
+  }, []);
+
   const handleCreateVar = useCallback(() => {
     if (!newVarName.trim()) {
       message.warning("变量名不能为空");
@@ -346,7 +358,11 @@ const LayoutBuilder: FC<LayoutBuilderProps> = ({ initialLayout = [], initialValu
                       {typeIcon}
                     </span>
                     <code className="text-[11px] font-semibold text-slate-700 truncate">{key}</code>
-                    <span className="w-4 h-4 rounded-md bg-slate-50 text-[8px] text-slate-300 flex items-center justify-center ml-auto opacity-0 group-hover:opacity-100 transition-opacity">⠿</span>
+                    <button
+                      className="w-5 h-5 rounded-md bg-white hover:bg-rose-100 text-slate-300 hover:text-rose-400 flex items-center justify-center text-xs ml-auto opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                      onClick={(e) => { e.stopPropagation(); deleteVar(key); }}
+                      title="删除变量"
+                    >×</button>
                   </div>
                   {valStr && (
                     <span className="text-[10px] text-slate-400 truncate pl-8 pr-1">{valStr}</span>
@@ -467,19 +483,19 @@ const LayoutBuilder: FC<LayoutBuilderProps> = ({ initialLayout = [], initialValu
                             }}
                           >
                             <div className="absolute left-0 top-2 bottom-2 w-[4px] rounded-r-full" style={{ backgroundColor: meta.color, opacity: isSel ? 1 : 0.7 }} />
-                            <div className="flex items-center gap-1.5 mb-1">
+                            <div className="flex items-center gap-1.5 mb-1.5">
                               <span
                                 className="text-[9px] font-bold px-1.5 py-0.5 rounded-md text-white shadow-sm"
                                 style={{ backgroundColor: meta.color }}
                               >
                                 {meta.label}
                               </span>
+                              {cell.store && (
+                                <code className="text-[10px] font-semibold text-indigo-600 truncate bg-indigo-50/80 px-1.5 py-0.5 rounded-md">{`{${cell.store}}`}</code>
+                              )}
                               <span className="text-[9px] text-slate-400 ml-auto font-mono shrink-0 bg-slate-100 px-1.5 py-0.5 rounded-md">{span}c</span>
                             </div>
-                            {cell.store && (
-                              <code className="text-[10px] font-semibold text-indigo-600 truncate bg-indigo-50/80 px-1.5 py-0.5 rounded-md self-start mb-1.5">{`{${cell.store}}`}</code>
-                            )}
-                            <div className="scale-[0.88] origin-left pointer-events-none opacity-70 group-hover:opacity-100 transition-opacity duration-200">
+                            <div className="flex justify-center scale-[0.92] pointer-events-none opacity-70 group-hover:opacity-100 transition-opacity duration-200">
                               <MiniPreview cell={cell} />
                             </div>
                             {isSel && (
@@ -563,7 +579,11 @@ const LayoutBuilder: FC<LayoutBuilderProps> = ({ initialLayout = [], initialValu
                   <Lbl t="默认值"/>
                   <Input size="small" className="!rounded-lg !text-xs"
                     value={selCell.store ? (typeof values[selCell.store] === "string" ? values[selCell.store] as string : JSON.stringify(values[selCell.store])) : ""}
-                    readOnly/>
+                    onChange={(e) => {
+                      const store = selCell.store;
+                      if (!store) return;
+                      setValues((prev) => ({ ...prev, [store]: e.target.value }));
+                    }}/>
                 </div>
                 <div className="flex items-end pb-0.5">
                   <Button size="small" className="!rounded-lg"
@@ -724,6 +744,30 @@ const LayoutBuilder: FC<LayoutBuilderProps> = ({ initialLayout = [], initialValu
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium leading-tight">创建变量</span>
                 <span className="text-[10px] text-slate-400 leading-tight">添加一个新的任务变量</span>
+              </div>
+            </div>
+            <div className="h-px bg-slate-100 mx-3 my-1" />
+            <div
+              className="w-full text-left px-4 py-2.5 text-[12px] text-rose-500 hover:bg-rose-50 transition-colors duration-150 cursor-pointer flex items-center gap-3 select-none"
+              onClick={() => {
+                setLeftCtxMenu(null);
+                const toDelete = unboundVars.map((v) => v.key);
+                if (toDelete.length > 0) {
+                  Modal.confirm({
+                    title: "确认删除",
+                    content: `确定要删除所有 ${toDelete.length} 个未布局变量吗？此操作不可撤销。`,
+                    okText: "删除",
+                    cancelText: "取消",
+                    okButtonProps: { danger: true },
+                    onOk: () => { for (const k of toDelete) deleteVar(k); },
+                  });
+                }
+              }}
+            >
+              <span className="w-7 h-7 rounded-xl bg-rose-100 text-rose-400 flex items-center justify-center text-sm shrink-0 shadow-sm">×</span>
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium leading-tight">删除全部未布局变量</span>
+                <span className="text-[10px] text-slate-400 leading-tight">清空所有未使用的变量</span>
               </div>
             </div>
           </div>

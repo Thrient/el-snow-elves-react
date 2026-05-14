@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { useSettingsStore } from '@/store/settings-store'
 import type { TaskBase } from '@/types/task'
+import type { PlanBase } from '@/types/plan'
+import { getCronEngine, removeCronEngine } from '@/engine/CronEngine'
 
 export type ExecuteItem = TaskBase
 
@@ -15,39 +17,54 @@ type Character = {
   opacity: number
   currentTask: string | null
   executeList: ExecuteEntry[]
+  plans: PlanBase[]
 }
 
 type State = {
   characters: Character[]
   selectedHwnd: string | null
-  add: (data: Omit<Character, 'executeList'> & { executeList: ExecuteItem[] }) => void
+  add: (data: Omit<Character, 'executeList' | 'plans'> & { executeList: ExecuteItem[]; plans?: PlanBase[] }) => void
   remove: (hwnd: string) => void
   update: (data: Partial<Character> & { hwnd: string }) => void
   popExecute: (hwnd: string) => ExecuteItem | undefined
   setSelectedHwnd: (hwnd: string | null) => void
   pushExecute: (hwnd: string, item: ExecuteItem) => void
+  unshiftExecute: (hwnd: string, item: ExecuteItem) => void
   removeExecute: (hwnd: string, uid: number) => void
   clearExecute: (hwnd: string) => void
   updateExecuteValues: (hwnd: string, uid: number, values: Record<string, unknown>) => void
   reorderExecute: (hwnd: string, orderedUids: number[]) => void
+  setPlans: (hwnd: string, plans: PlanBase[]) => void
+  syncPlansToAllWindows: (plans: PlanBase[]) => void
 }
 
 export const useCharacterStore = create<State>((set, get) => ({
   characters: [],
   selectedHwnd: null,
-  add: (data) =>
+  add: (data) => {
+    const plans = data.plans ?? [];
+    const executeList = data.executeList;
     set((state) => ({
       characters: [
         ...state.characters,
         {
-          ...data,
-          executeList: data.executeList.map((item) => ({
+          character: data.character,
+          hwnd: data.hwnd,
+          running: data.running,
+          opacity: data.opacity,
+          currentTask: data.currentTask,
+          plans,
+          executeList: executeList.map((item) => ({
             ...item,
             _uid: _executeUidCounter++,
           })),
         },
       ],
-    })),
+    }));
+    // 启动计划调度器
+    const eng = getCronEngine(data.hwnd, executeList);
+    eng.start(plans);
+  },
   update: (data: Partial<Character> & { hwnd: string }) =>
     set((state) => ({
       characters: state.characters.map((character) =>
@@ -70,11 +87,13 @@ export const useCharacterStore = create<State>((set, get) => ({
     }
     return item
   },
-  remove: (hwnd: string) =>
+  remove: (hwnd: string) => {
+    removeCronEngine(hwnd);
     set((state) => ({
       characters: state.characters.filter((c) => c.hwnd !== hwnd),
       selectedHwnd: state.selectedHwnd === hwnd ? null : state.selectedHwnd,
-    })),
+    }));
+  },
   setSelectedHwnd: (hwnd: string | null) => set({ selectedHwnd: hwnd }),
   pushExecute: (hwnd: string, item: ExecuteItem) =>
     set((state) => ({
@@ -85,6 +104,20 @@ export const useCharacterStore = create<State>((set, get) => ({
               executeList: [
                 ...character.executeList,
                 { ...item, _uid: _executeUidCounter++ },
+              ],
+            }
+          : character
+      ),
+    })),
+  unshiftExecute: (hwnd: string, item: ExecuteItem) =>
+    set((state) => ({
+      characters: state.characters.map((character) =>
+        character.hwnd === hwnd
+          ? {
+              ...character,
+              executeList: [
+                { ...item, _uid: _executeUidCounter++ },
+                ...character.executeList,
               ],
             }
           : character
@@ -122,6 +155,27 @@ export const useCharacterStore = create<State>((set, get) => ({
           : character
       ),
     })),
+  setPlans: (hwnd: string, plans: PlanBase[]) => {
+    set((state) => ({
+      characters: state.characters.map((c) =>
+        c.hwnd === hwnd ? { ...c, plans } : c
+      ),
+    }));
+    const eng = getCronEngine(hwnd, []);
+    eng.start(plans);
+  },
+  syncPlansToAllWindows: (plans: PlanBase[]) => {
+    const { characters } = get();
+    for (const c of characters) {
+      set((state) => ({
+        characters: state.characters.map((ch) =>
+          ch.hwnd === c.hwnd ? { ...ch, plans } : ch
+        ),
+      }));
+      const eng = getCronEngine(c.hwnd, []);
+      eng.start(plans);
+    }
+  },
   reorderExecute: (hwnd: string, orderedUids: number[]) =>
     set((state) => ({
       characters: state.characters.map((character) =>

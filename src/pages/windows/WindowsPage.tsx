@@ -1,7 +1,9 @@
-import  { type FC } from "react";
+import  { type FC, useEffect } from "react";
 import { useState } from "react";
+import { Cron } from "croner";
 import {
   ClearOutlined,
+  ClockCircleOutlined,
   CloseOutlined,
   DesktopOutlined,
   MinusCircleOutlined,
@@ -10,13 +12,16 @@ import {
   PlusOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
-import { Button, Select, Space, Tag, Empty } from "antd";
+import { Button, Select, Space, Switch, Tag, Empty, Tabs } from "antd";
 import CircularSlider from "@/components/circular-slider/CircularSlider.tsx";
 import type { Task } from "@/types/task.ts";
 import { useCharacterStore } from "@/store/character.ts";
 import HwndPreviewModal from "@/components/hwnd-preview-modal/HwndPreviewModal.tsx";
 import { useUserStore } from "@/store/user-store.ts";
 import { useTaskStore } from "@/store/task-store.ts";
+import { PLAN_TEMPLATES } from "@/types/plan.ts";
+import cronstrue from "cronstrue";
+import "cronstrue/locales/zh_CN";
 import TaskConfigModal from "@/components/task-config-modal/TaskConfigModal.tsx";
 
 const DOT_COLORS = ['#1677ff', '#52c41a', '#fa8c16', '#722ed1', '#13c2c2']
@@ -30,6 +35,12 @@ const WindowsPage: FC = () => {
   const [configOpen, setConfigOpen] = useState(false);
   const [configTask, setConfigTask] = useState<Task | null>(null);
   const [configUid, setConfigUid] = useState<number | null>(null);
+
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const selectedCharacter = characterStore.selectedHwnd
     ? characterStore.characters.find((c) => c.hwnd === characterStore.selectedHwnd)
@@ -249,61 +260,153 @@ const WindowsPage: FC = () => {
                 </div>
               </div>
 
-              {/* ---- Right: execute list ---- */}
-              <div className="w-64 shrink-0 flex flex-col">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2 text-[13px] font-semibold text-[#1a1a2e]">
-                    <UnorderedListOutlined className="text-[#8b8fa3]" />
-                    待执行任务
-                  </div>
-                  <span className="text-[11px] text-[#8b8fa3] bg-[#f5f5f7] px-2 py-0.5 rounded-full font-medium">
-                    {selectedCharacter.executeList.length}
-                  </span>
-                </div>
-
-                <div className="flex-1 rounded-xl border border-[#eef0f2] bg-[#fafbfc] overflow-y-auto">
-                  {selectedCharacter.executeList.length === 0 ? (
-                    <div className="h-full flex items-center justify-center">
-                      <Empty description="暂无任务" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                    </div>
-                  ) : (
-                    <div className="p-2 flex flex-col gap-1.5">
-                      {selectedCharacter.executeList.map((item, idx) => (
-                        <div
-                          key={item._uid}
-                          draggable
-                          onDragStart={handleDragStart(item._uid)}
-                          onDragEnd={handleDragEnd}
-                          onDragOver={handleDragOver}
-                          onDrop={handleDrop(item._uid)}
-                          className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white border border-[#eef0f2] hover:border-[#d0d4dd] hover:shadow-sm transition-all duration-150 group cursor-grab active:cursor-grabbing"
-                          style={{ opacity: dragUid === item._uid ? 0.4 : 1 }}
-                          onClick={() => openConfig(item._uid)}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div
-                              className="w-1.5 h-1.5 rounded-full shrink-0"
-                              style={{ backgroundColor: DOT_COLORS[idx % DOT_COLORS.length] }}
-                            />
-                            <span className="text-[12px] text-[#1a1a2e] truncate font-medium">{item.name}</span>
-                            <Tag className="text-[10px] leading-none border-none rounded-sm px-1.5 py-0.5 m-0 text-[#999] bg-[#f5f5f5] font-mono">
-                              v{item.version}
-                            </Tag>
-                          </div>
-                          <span
-                            className="flex items-center justify-center w-5 h-5 rounded-md text-[#ccc] hover:text-[#ff4d4f] hover:bg-[#fff1f0] cursor-pointer opacity-0 group-hover:opacity-100 transition-all shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              characterStore.removeExecute(selectedCharacter.hwnd, item._uid);
-                            }}
-                          >
-                            <CloseOutlined className="text-[11px]" />
-                          </span>
+              {/* ---- Right: tabs ---- */}
+              <div className="w-64 shrink-0 flex flex-col" style={{ height: "calc(100vh - 250px)" }}>
+                <Tabs
+                  size="small"
+                  className="h-full"
+                  tabBarStyle={{ marginBottom: 8 }}
+                  items={[
+                    {
+                      key: "tasks",
+                      label: <span className="text-[12px]">待执行任务 <span className="text-[10px] text-[#8b8fa3]">{selectedCharacter.executeList.length}</span></span>,
+                      children: (
+                        <div className="rounded-xl border border-[#eef0f2] bg-[#fafbfc] overflow-y-auto" style={{ height: "calc(100vh - 290px)" }}>
+                          {selectedCharacter.executeList.length === 0 ? (
+                            <div className="h-full flex items-center justify-center" style={{ minHeight: "calc(100vh - 290px)" }}>
+                              <Empty description="暂无任务" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                            </div>
+                          ) : (
+                            <div className="p-2 flex flex-col gap-1.5">
+                              {selectedCharacter.executeList.map((item, idx) => (
+                                <div
+                                  key={item._uid}
+                                  draggable
+                                  onDragStart={handleDragStart(item._uid)}
+                                  onDragEnd={handleDragEnd}
+                                  onDragOver={handleDragOver}
+                                  onDrop={handleDrop(item._uid)}
+                                  className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg bg-white border border-[#eef0f2] hover:border-[#d0d4dd] hover:shadow-sm transition-all duration-150 group cursor-grab active:cursor-grabbing"
+                                  style={{ opacity: dragUid === item._uid ? 0.4 : 1 }}
+                                  onClick={() => openConfig(item._uid)}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div
+                                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                                      style={{ backgroundColor: DOT_COLORS[idx % DOT_COLORS.length] }}
+                                    />
+                                    <span className="text-[12px] text-[#1a1a2e] truncate font-medium">{item.name}</span>
+                                    <Tag className="text-[10px] leading-none border-none rounded-sm px-1.5 py-0.5 m-0 text-[#999] bg-[#f5f5f5] font-mono">
+                                      v{item.version}
+                                    </Tag>
+                                  </div>
+                                  <span
+                                    className="flex items-center justify-center w-5 h-5 rounded-md text-[#ccc] hover:text-[#ff4d4f] hover:bg-[#fff1f0] cursor-pointer opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      characterStore.removeExecute(selectedCharacter.hwnd, item._uid);
+                                    }}
+                                  >
+                                    <CloseOutlined className="text-[11px]" />
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      ),
+                    },
+                    {
+                      key: "plans",
+                      label: <span className="text-[12px]">计划 <span className="text-[10px] text-[#8b8fa3]">{selectedCharacter.plans.length}</span></span>,
+                      children: (
+                        <div className="rounded-xl border border-[#eef0f2] bg-[#fafbfc] overflow-y-auto" style={{ height: "calc(100vh - 290px)" }}>
+                          {!selectedCharacter.plans?.length ? (
+                            <div className="h-full flex items-center justify-center" style={{ minHeight: "calc(100vh - 290px)" }}>
+                              <Empty description="暂无计划" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                            </div>
+                          ) : (
+                            <div className="p-2 flex flex-col gap-2">
+                              {selectedCharacter.plans.map((plan, idx) => {
+                                const tmpl = PLAN_TEMPLATES.find((t) => t.id === plan.templateId);
+                                const cronHuman = (() => { try { return cronstrue.toString(plan.cron, { locale: "zh_CN" }); } catch { return plan.cron; } })();
+                                let nextRun: Date | null = null;
+                                let secondsLeft = -1;
+                                if (plan.enabled) {
+                                  try { nextRun = new Cron(plan.cron).nextRun(); } catch { /* */ }
+                                  if (nextRun) secondsLeft = Math.max(0, Math.floor((nextRun.getTime() - now) / 1000));
+                                }
+                                const borderColor = plan.enabled ? "#e0e7ff" : "#eef0f2";
+                                const bg = plan.enabled ? "linear-gradient(135deg, #f8faff 0%, #ffffff 100%)" : "#fafbfc";
+                                return (
+                                  <div
+                                    key={plan._uid ?? idx}
+                                    className="rounded-xl border overflow-hidden transition-all duration-300 group"
+                                    style={{ borderColor, background: bg }}
+                                  >
+                                    <div className="flex items-center gap-1.5 px-3 py-2.5">
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                          <span className="text-[12px] font-semibold text-[#1a1a2e] truncate">{plan.name}</span>
+                                          {tmpl && (
+                                            <Tag className="!m-0 text-[9px] leading-none px-1.5 py-0.5 rounded border-0"
+                                              style={{ color: "#6366f1", background: "#eef2ff" }}>{tmpl.name}</Tag>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-1 text-[10px] text-[#94a3b8]">
+                                          <ClockCircleOutlined className="text-[9px]" />
+                                          <span className="font-mono">{plan.cron}</span>
+                                          <span className="text-[#cbd5e1]">·</span>
+                                          <span className="truncate">{cronHuman}</span>
+                                        </div>
+                                      </div>
+                                      <Switch
+                                        size="small"
+                                        checked={plan.enabled}
+                                        onChange={() => {
+                                          userStore.togglePlan(plan._uid);
+                                          const updated = useUserStore.getState().plans;
+                                          characterStore.setPlans(selectedCharacter.hwnd, updated);
+                                        }}
+                                      />
+                                      <span
+                                        className="text-[#cbd5e1] hover:text-[#ef4444] cursor-pointer text-[13px] leading-none opacity-0 group-hover:opacity-100 transition-all shrink-0 select-none"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          userStore.removePlan(plan._uid);
+                                          const updated = useUserStore.getState().plans;
+                                          characterStore.setPlans(selectedCharacter.hwnd, updated);
+                                        }}
+                                      >×</span>
+                                    </div>
+                                    {plan.enabled && nextRun && (
+                                      <div className="px-3 pb-2.5 pt-0" style={{ borderTop: "none" }}>
+                                        {secondsLeft <= 60 ? (
+                                          <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)" }}>
+                                            <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center text-[9px] font-bold text-white animate-pulse">!</div>
+                                            <span className="text-[11px] font-semibold text-[#92400e]">即将执行</span>
+                                            <span className="text-[13px] font-bold text-[#d97706] ml-auto font-mono tabular-nums">{secondsLeft}s</span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-2 text-[10px] text-[#94a3b8] rounded-lg px-3 py-1.5" style={{ background: "#f8fafc" }}>
+                                            <span>下次执行</span>
+                                            <span className="font-semibold text-[#475569] ml-auto">
+                                              {nextRun.toLocaleDateString("zh-CN", { month: "short", day: "numeric" })} {nextRun.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ),
+                    },
+                  ]}
+                />
               </div>
             </div>
           )}
@@ -328,6 +431,7 @@ const WindowsPage: FC = () => {
                     version: t.version,
                     values: t.values,
                   })),
+                  plans: userStore.plans,
                 });
                 characterStore.setSelectedHwnd(hwnd);
               })

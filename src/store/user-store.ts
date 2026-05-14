@@ -1,23 +1,33 @@
 import { create } from 'zustand'
 import type { TaskBase } from "@/types/task.ts";
+import type { PlanBase } from "@/types/plan.ts";
 
 type QueueEntry = TaskBase & { _uid: number }
+type PlanEntry = PlanBase & { _uid: number }
 
-let _nextUid = 0
+let _nextTaskUid = 0
+let _nextPlanUid = 0
 
 type State = {
   queue: QueueEntry[]
+  plans: PlanEntry[]
   appendTask: (task: TaskBase) => void
   removeTask: (uid: number) => void
   clearTaskList: () => void
   updateTaskValues: (uid: number, values: Record<string, unknown>) => void
+  addPlan: (plan: PlanBase) => void
+  removePlan: (uid: number) => void
+  updatePlan: (uid: number, plan: PlanBase) => void
+  togglePlan: (uid: number) => void
   loadConfig: (payload: Record<string, unknown>) => void
 }
 
 export const useUserStore = create<State>((set) => ({
   queue: [],
+  plans: [],
+
   appendTask: (task) => {
-    const uid = _nextUid++
+    const uid = _nextTaskUid++
     set((state) => ({
       queue: [...state.queue, { id: task.id, name: task.name, version: task.version, values: { ...task.values }, _uid: uid }]
     }))
@@ -36,6 +46,24 @@ export const useUserStore = create<State>((set) => ({
         t._uid === uid ? { ...t, values } : t
       )
     })),
+
+  addPlan: (plan) => {
+    const uid = _nextPlanUid++
+    set((state) => ({ plans: [...state.plans, { ...plan, _uid: uid }] }))
+  },
+  removePlan: (uid) =>
+    set((state) => ({ plans: state.plans.filter((p) => p._uid !== uid) })),
+  updatePlan: (uid, plan) =>
+    set((state) => ({
+      plans: state.plans.map((p) => (p._uid === uid ? { ...plan, _uid: p._uid } : p)),
+    })),
+  togglePlan: (uid) =>
+    set((state) => ({
+      plans: state.plans.map((p) =>
+        p._uid === uid ? { ...p, enabled: !p.enabled } : p
+      ),
+    })),
+
   loadConfig: (payload: Record<string, unknown>) => {
     set((state) => {
       const keys = Object.keys(state) as (keyof State)[]
@@ -50,7 +78,17 @@ export const useUserStore = create<State>((set) => ({
             name: t.name as string,
             version: t.version as string,
             values: (t.values ?? {}) as Record<string, unknown>,
-            _uid: _nextUid++,
+            _uid: _nextTaskUid++,
+          }))
+        } else if (key === "plans") {
+          const raw = Array.isArray(payload.plans) ? payload.plans : []
+          next.plans = raw.map((p: Record<string, unknown>) => ({
+            name: p.name as string,
+            templateId: p.templateId as string,
+            cron: p.cron as string,
+            enabled: p.enabled as boolean,
+            action: p.action as PlanBase["action"],
+            _uid: _nextPlanUid++,
           }))
         } else {
           ;(next as any)[key] = payload[key as string]

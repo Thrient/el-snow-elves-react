@@ -24,6 +24,7 @@ type EditorState = {
   setDirty: (dirty: boolean) => void;
   setViewMode: (mode: ViewMode) => void;
 
+  renameStep: (oldName: string, newName: string, isCommon: boolean) => void;
   updateStep: (name: string, step: Step, isCommon: boolean) => void;
   addStep: (name: string, isCommon: boolean) => void;
   removeStep: (name: string, isCommon: boolean) => void;
@@ -94,6 +95,17 @@ export const useEditorStore = create<EditorState>()(
 
       setDirty: (dirty) => set({ isDirty: dirty }),
       setViewMode: (mode) => set({ viewMode: mode }),
+
+      renameStep: (oldName, newName, isCommon) => {
+        const { currentTask } = get();
+        if (!currentTask) return;
+        const key = isCommon ? "common" : "steps";
+        const steps = { ...currentTask[key] };
+        if (!steps[oldName] || steps[newName]) return;
+        steps[newName] = steps[oldName];
+        delete steps[oldName];
+        set({ currentTask: { ...currentTask, [key]: steps }, isDirty: true });
+      },
 
       updateStep: (name, step, isCommon) => {
         const { currentTask } = get();
