@@ -10,14 +10,13 @@ import {
   PlayCircleOutlined,
   PauseCircleOutlined,
   PlusOutlined,
-  UnorderedListOutlined,
 } from "@ant-design/icons";
 import { Button, Select, Space, Switch, Tag, Empty, Tabs } from "antd";
 import CircularSlider from "@/components/circular-slider/CircularSlider.tsx";
 import type { Task } from "@/types/task.ts";
 import { useCharacterStore } from "@/store/character.ts";
 import HwndPreviewModal from "@/components/hwnd-preview-modal/HwndPreviewModal.tsx";
-import { useUserStore } from "@/store/user-store.ts";
+import { useUserStore, type PlanEntry } from "@/store/user-store.ts";
 import { useTaskStore } from "@/store/task-store.ts";
 import { PLAN_TEMPLATES } from "@/types/plan.ts";
 import cronstrue from "cronstrue";
@@ -327,7 +326,8 @@ const WindowsPage: FC = () => {
                             </div>
                           ) : (
                             <div className="p-2 flex flex-col gap-2">
-                              {selectedCharacter.plans.map((plan, idx) => {
+                              {selectedCharacter.plans.map((planBase, idx) => {
+                                const plan = planBase as PlanEntry;
                                 const tmpl = PLAN_TEMPLATES.find((t) => t.id === plan.templateId);
                                 const cronHuman = (() => { try { return cronstrue.toString(plan.cron, { locale: "zh_CN" }); } catch { return plan.cron; } })();
                                 let nextRun: Date | null = null;
@@ -340,7 +340,7 @@ const WindowsPage: FC = () => {
                                 const bg = plan.enabled ? "linear-gradient(135deg, #f8faff 0%, #ffffff 100%)" : "#fafbfc";
                                 return (
                                   <div
-                                    key={plan._uid ?? idx}
+                                    key={idx}
                                     className="rounded-xl border overflow-hidden transition-all duration-300 group"
                                     style={{ borderColor, background: bg }}
                                   >
@@ -435,6 +435,24 @@ const WindowsPage: FC = () => {
                 });
                 characterStore.setSelectedHwnd(hwnd);
               })
+          }}
+          onSelectAll={async (hwnds: string[]) => {
+            const bound = new Set(characterStore.characters.map((c) => c.hwnd));
+            for (const hwnd of hwnds) {
+              if (bound.has(hwnd)) continue;
+              await window.pywebview?.api.emit("API:SCRIPT:BIND", hwnd);
+              characterStore.add({
+                character: "",
+                hwnd,
+                running: true,
+                opacity: 255,
+                currentTask: null,
+                executeList: userStore.queue.map((t) => ({
+                  id: t.id, name: t.name, version: t.version, values: t.values,
+                })),
+                plans: userStore.plans,
+              });
+            }
           }}
         />
       ) : null}

@@ -3,7 +3,7 @@ import type { TaskBase } from "@/types/task.ts";
 import type { PlanBase } from "@/types/plan.ts";
 
 type QueueEntry = TaskBase & { _uid: number }
-type PlanEntry = PlanBase & { _uid: number }
+export type PlanEntry = PlanBase & { _uid: number }
 
 let _nextTaskUid = 0
 let _nextPlanUid = 0

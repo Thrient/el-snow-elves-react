@@ -6,7 +6,7 @@ import { callApi } from "@/utils/pywebview";
 function getCharStore() { return window.useCharacterStore!.getState(); }
 function getTaskStore() { return window.useTaskStore!.getState(); }
 
-type CronJob = ReturnType<typeof Cron>;
+type CronJob = Cron;
 
 export class CronEngine {
   private hwnd: string;

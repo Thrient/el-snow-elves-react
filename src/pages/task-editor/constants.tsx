@@ -16,7 +16,6 @@ import {
   UserOutlined,
   DesktopOutlined,
   EditOutlined,
-  FormOutlined,
 } from "@ant-design/icons";
 
 export const ACTION_OPTS = [

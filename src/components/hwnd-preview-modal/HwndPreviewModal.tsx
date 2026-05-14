@@ -12,6 +12,7 @@ interface Props {
   open?: boolean
   onClose?: () => void
   onSelect?: (hwnd: string) => void
+  onSelectAll?: (hwnds: string[]) => void
 }
 
 const HwndPreviewModal: FC<Props> = (props) => {
@@ -19,6 +20,7 @@ const HwndPreviewModal: FC<Props> = (props) => {
     open = true,
     onClose = () => {},
     onSelect = () => {},
+    onSelectAll,
   } = props
 
   const [loading, setLoading] = useState(true)
@@ -43,13 +45,27 @@ const HwndPreviewModal: FC<Props> = (props) => {
   return (
     <Modal
       title={
-        <div className="flex items-center gap-2.5">
-          <div className="w-1 h-5 rounded-full bg-[#1677ff]" />
-          <span className="text-[15px] font-semibold text-[#1a1a2e] tracking-tight">绑定窗口</span>
-          {!loading && (
-            <span className="text-[11px] text-[#8b8fa3] bg-[#f5f5f7] px-2 py-0.5 rounded-full font-medium">
-              {data.length} 个可用
-            </span>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-1 h-5 rounded-full bg-[#1677ff]" />
+            <span className="text-[15px] font-semibold text-[#1a1a2e] tracking-tight">绑定窗口</span>
+            {!loading && (
+              <span className="text-[11px] text-[#8b8fa3] bg-[#f5f5f7] px-2 py-0.5 rounded-full font-medium">
+                {data.length} 个可用
+              </span>
+            )}
+          </div>
+          {!loading && onSelectAll && data.length > 1 && (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-px bg-[#eef0f2]" />
+              <span
+                className="text-[11px] text-[#8b8fa3] hover:text-[#1677ff] cursor-pointer transition-colors shrink-0"
+                onClick={() => { onSelectAll(data.map((d) => d.hwnd)); onClose(); }}
+              >
+                绑定全部 {data.length} 个窗口
+              </span>
+              <div className="flex-1 h-px bg-[#eef0f2]" />
+            </div>
           )}
         </div>
       }

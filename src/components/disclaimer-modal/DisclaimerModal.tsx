@@ -110,7 +110,7 @@ export default function DisclaimerModal() {
         <Divider className="!my-0" />
 
         <div className="flex flex-col gap-3">
-          <Paragraph className="!mb-0 text-[11px] text-slate-400 leading-relaxed">
+          <Paragraph className="!mb-0 text-[12px] text-[#ef4444] leading-relaxed font-medium">
             继续使用即表示您确认已阅读、理解并同意上述全部条款。
             如您不同意任一条款，请关闭本工具。
           </Paragraph>

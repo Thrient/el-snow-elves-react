@@ -74,7 +74,7 @@ const AccountsPage: FC = () => {
   };
 
   // ---- 轮询自动结束 ----
-  const pollRef = useRef<ReturnType<typeof setInterval>>();
+  const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
     if (recording || replaying) {
