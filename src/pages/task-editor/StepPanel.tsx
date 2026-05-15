@@ -498,6 +498,7 @@ const StepPanel: FC<Props> = ({ stepName, step, isCommon, ctx, onClose, onRename
               useEditorStore.getState().updateStep(stepName, {
                 ...step, action: newAction, params: clean,
               }, isCommon);
+              onUpdate("action", newAction);
             }}
             options={ACTION_OPTS.map(o => ({
               ...o, label: <span className="flex items-center gap-2">

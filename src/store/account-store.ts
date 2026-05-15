@@ -3,6 +3,8 @@ import { create } from "zustand";
 export interface Account {
   name: string;
   createdAt: number;
+  type?: string;
+  port?: number;
 }
 
 type State = {

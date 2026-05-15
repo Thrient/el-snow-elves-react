@@ -13,6 +13,7 @@ type State = {
   plans: PlanEntry[]
   appendTask: (task: TaskBase) => void
   removeTask: (uid: number) => void
+  reorderQueue: (orderedUids: number[]) => void
   clearTaskList: () => void
   updateTaskValues: (uid: number, values: Record<string, unknown>) => void
   addPlan: (plan: PlanBase) => void
@@ -36,6 +37,19 @@ export const useUserStore = create<State>((set) => ({
     set((state) => ({
       queue: state.queue.filter((t) => t._uid !== uid)
     })),
+  reorderQueue: (orderedUids: number[]) =>
+    set((state) => {
+      const byUid = new Map(state.queue.map((t) => [t._uid, t]));
+      const reordered: QueueEntry[] = [];
+      for (const uid of orderedUids) {
+        const entry = byUid.get(uid);
+        if (entry) reordered.push(entry);
+      }
+      for (const t of state.queue) {
+        if (!orderedUids.includes(t._uid)) reordered.push(t);
+      }
+      return { queue: reordered };
+    }),
   clearTaskList: () =>
     set(() => ({
       queue: []

@@ -199,7 +199,8 @@ const TaskEditorPage: FC = () => {
     const positions = await window.pywebview?.api.emit("API:TASK:LOAD:POSITIONS", task.id).catch(() => ({})) ?? {};
     setSavedPositions(positions);
     requestAnimationFrame(() => {
-      const { nodes, edges } = taskToFlow(task, positions);
+      const current = useEditorStore.getState().currentTask;
+      const { nodes, edges } = taskToFlow(current ?? task, positions);
       setFlowNodes(nodes); setFlowEdges(edges);
       // Unlock after ReactFlow finishes processing the initial nodes
       setTimeout(() => { initRef.current = false; }, 200);
@@ -244,6 +245,7 @@ const TaskEditorPage: FC = () => {
       setSavedPositions(positions);
       window.pywebview?.api.emit("API:TASK:SAVE:POSITIONS", editor.currentTask.id, positions).catch(() => {});
     }
+    loadTaskList();
     message.success("保存成功");
   };
   const handleSaveRef = useRef(handleSave);

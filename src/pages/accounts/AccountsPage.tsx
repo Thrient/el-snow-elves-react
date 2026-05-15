@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type FC } from "react";
-import { Button, Input, Modal, Popconfirm, Table, message, Spin } from "antd";
+import { Button, Input, Modal, Popconfirm, Table, message, Spin, Radio } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, DeleteOutlined, PlayCircleOutlined, ReloadOutlined, UserOutlined } from "@ant-design/icons";
+import { PlusOutlined, DeleteOutlined, PlayCircleOutlined, ReloadOutlined, UserOutlined, ScanOutlined } from "@ant-design/icons";
 import { useAccountStore } from "@/store/account-store";
 import type { Account } from "@/store/account-store";
 
@@ -15,6 +15,7 @@ const AccountsPage: FC = () => {
   // ---- 录制 ----
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [recordName, setRecordName] = useState("");
+  const [recordMode, setRecordMode] = useState<"qr" | "vivo" | "bilibili" | "huawei">("qr");
   const [recording, setRecording] = useState(false);
   const [recordStatus, setRecordStatus] = useState<string>("");
 
@@ -23,8 +24,14 @@ const AccountsPage: FC = () => {
     setRecording(true);
     setRecordStatus("启动代理中...");
     try {
-      await window.pywebview?.api.emit("API:ACCOUNT:RECORD:START", recordName.trim());
-      setRecordStatus(`正在录制 — 请在游戏中手动登录账号「${recordName.trim()}」`);
+      if (recordMode === "vivo" || recordMode === "bilibili" || recordMode === "huawei") {
+        await window.pywebview?.api.emit("API:ACCOUNT:RECORD:START:CHANNEL", recordName.trim(), recordMode);
+        const labels: Record<string, string> = { vivo: "Vivo", bilibili: "B站", huawei: "华为" };
+        setRecordStatus(`请在弹出窗口中登录${labels[recordMode]}账号，然后在游戏中点击扫码登录`);
+      } else {
+        await window.pywebview?.api.emit("API:ACCOUNT:RECORD:START", recordName.trim());
+        setRecordStatus(`正在录制 — 请在游戏中手动登录账号「${recordName.trim()}」`);
+      }
     } catch {
       setRecordStatus("启动失败");
       setRecording(false);
@@ -52,6 +59,7 @@ const AccountsPage: FC = () => {
     } else {
       setRecordModalOpen(false);
       setRecordName("");
+      setRecordMode("qr");
     }
   };
 
@@ -109,10 +117,24 @@ const AccountsPage: FC = () => {
       ),
     },
     {
+      title: "类型",
+      dataIndex: "type",
+      key: "type",
+      width: 80,
+      render: (t: string) => <span className="text-xs">{t || "官服"}</span>,
+    },
+    {
+      title: "端口",
+      dataIndex: "port",
+      key: "port",
+      width: 70,
+      render: (p: number) => <span className="text-xs text-[#8b8fa3]">{p || 443}</span>,
+    },
+    {
       title: "创建时间",
       dataIndex: "createdAt",
       key: "createdAt",
-      width: 160,
+      width: 150,
       render: (ts: number) => (
         <span className="text-xs text-[#8b8fa3]">
           {ts ? new Date(ts).toLocaleString("zh-CN") : "—"}
@@ -136,7 +158,7 @@ const AccountsPage: FC = () => {
             type="text"
             size="small"
             icon={<ReloadOutlined />}
-            onClick={() => { setRecordName(record.name); setRecordModalOpen(true); }}
+            onClick={() => { setRecordName(record.name); setRecordMode("qr"); setRecordModalOpen(true); }}
             title="重新录制"
           />
           <Popconfirm
@@ -212,6 +234,28 @@ const AccountsPage: FC = () => {
             onChange={(e) => setRecordName(e.target.value)}
             disabled={recording}
           />
+          {!recording && (
+            <Radio.Group
+              value={recordMode}
+              onChange={(e) => setRecordMode(e.target.value)}
+              optionType="button"
+              buttonStyle="solid"
+              size="small"
+            >
+              <Radio.Button value="qr">
+                <ScanOutlined className="mr-1" />官服扫码
+              </Radio.Button>
+              <Radio.Button value="vivo">
+                Vivo
+              </Radio.Button>
+              <Radio.Button value="bilibili">
+                B站
+              </Radio.Button>
+              <Radio.Button value="huawei">
+                华为
+              </Radio.Button>
+            </Radio.Group>
+          )}
           {recording && (
             <div className="flex items-center gap-2 text-sm text-[#8b8fa3]">
               <Spin size="small" />
@@ -219,7 +263,9 @@ const AccountsPage: FC = () => {
             </div>
           )}
           <div className="text-xs text-[#bbb]">
-            录制时请先在游戏中手动登录一次，代理会自动捕获登录凭证。
+            {recordMode === "qr"
+              ? "官服扫码：在游戏中手动登录，代理自动捕获登录凭证。"
+              : `渠道服录制：在弹出的窗口中登录${{ vivo: "Vivo", bilibili: "B站", huawei: "华为" }[recordMode]}账号，然后在游戏中点击扫码登录。`}
           </div>
         </div>
       </Modal>

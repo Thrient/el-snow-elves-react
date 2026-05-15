@@ -1,7 +1,7 @@
 import type { FC, MouseEvent } from "react"
 import { useEffect, useRef, useState } from "react"
 import { Badge, Switch, Tabs } from "antd"
-import { ArrowDownOutlined, UnorderedListOutlined, InboxOutlined, ClockCircleOutlined } from "@ant-design/icons"
+import { ArrowDownOutlined, UnorderedListOutlined, InboxOutlined, ClockCircleOutlined, HolderOutlined } from "@ant-design/icons"
 import { useUserStore } from "@/store/user-store.ts"
 import { useCharacterStore } from "@/store/character.ts"
 import { useTaskStore } from "@/store/task-store.ts"
@@ -59,6 +59,7 @@ const FloatingPanel: FC = () => {
 
   const updateTaskValues = useUserStore((s) => s.updateTaskValues)
   const removeTask = useUserStore((s) => s.removeTask)
+  const reorderQueue = useUserStore((s) => s.reorderQueue)
   const removePlan = useUserStore((s) => s.removePlan)
   const togglePlan = useUserStore((s) => s.togglePlan)
 
@@ -69,6 +70,10 @@ const FloatingPanel: FC = () => {
   const cardDraggingRef = useRef(false)
   const swipeStartX = useRef(0)
   const swiped = useRef(false)
+
+  // ---- Drag-to-reorder state ----
+  const [dragUid, setDragUid] = useState<number | null>(null)
+  const [dragOverUid, setDragOverUid] = useState<number | null>(null)
 
   // ---- Card swipe handlers ----
   useEffect(() => {
@@ -182,6 +187,49 @@ const FloatingPanel: FC = () => {
     swiped.current = false
     swipeStartX.current = e.clientX / useResponsiveStore.getState().zoom
     setSwiping(target)
+  }
+
+  // ---- Drag-to-reorder handlers (queue only) ----
+  const handleDragStart = (uid: number) => (e: React.DragEvent) => {
+    // 取消 swipe 状态，避免拖拽结束后鼠标移动触发左右滑动
+    cardDraggingRef.current = false
+    setSwiping(null)
+    e.dataTransfer.effectAllowed = "move"
+    e.dataTransfer.setData("text/plain", String(uid))
+    setDragUid(uid)
+  }
+
+  const handleDragEnd = () => {
+    // 确保拖拽结束后 swipe 状态干净
+    cardDraggingRef.current = false
+    setSwiping(null)
+    setDragUid(null)
+    setDragOverUid(null)
+  }
+
+  const handleDragOver = (uid: number) => (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    if (dragUid !== null && dragUid !== uid) {
+      setDragOverUid(uid)
+    }
+  }
+
+  const handleDrop = (targetUid: number) => (e: React.DragEvent) => {
+    e.preventDefault()
+    const sourceUid = Number(e.dataTransfer.getData("text/plain"))
+    if (isNaN(sourceUid) || sourceUid === targetUid) return
+
+    const uids = queue.map((item) => item._uid)
+    const sourceIdx = uids.indexOf(sourceUid)
+    const targetIdx = uids.indexOf(targetUid)
+    if (sourceIdx === -1 || targetIdx === -1) return
+
+    uids.splice(sourceIdx, 1)
+    uids.splice(targetIdx, 0, sourceUid)
+    reorderQueue(uids)
+    setDragUid(null)
+    setDragOverUid(null)
   }
 
   // ---- Config modal ----
@@ -324,6 +372,7 @@ const FloatingPanel: FC = () => {
                       <div className="flex flex-col gap-2">
                         {queue.map((item, index) => {
                           const indicator = swiping?.uid === item._uid && swiping?.type === "queue" ? swipeIndicator(swipeX) : null
+                          const isDragOver = dragOverUid === item._uid
                           return (
                             <div key={item._uid} className="relative overflow-hidden rounded-xl">
                               {indicator && (
@@ -338,6 +387,10 @@ const FloatingPanel: FC = () => {
                                   {indicator.text}
                                 </div>
                               )}
+                              {/* drag-over indicator */}
+                              {isDragOver && (
+                                <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#1677ff] rounded-full z-10" />
+                              )}
                               <div
                                 className="rounded-xl px-4 py-3 cursor-pointer select-none relative"
                                 style={{
@@ -345,14 +398,27 @@ const FloatingPanel: FC = () => {
                                   transform: swiping?.uid === item._uid && swiping?.type === "queue" ? `translateX(${swipeX}px)` : undefined,
                                   backgroundColor: cardColors[index % cardColors.length],
                                   border: `1px solid ${cardBorderColors[index % cardBorderColors.length]}`,
+                                  opacity: dragUid === item._uid ? 0.4 : 1,
                                 }}
                                 onClick={() => {
                                   if (swiped.current) { swiped.current = false; return }
                                   openConfig(item._uid)
                                 }}
                                 onMouseDown={(e) => handleCardMouseDown({ uid: item._uid, type: "queue" }, e)}
+                                draggable
+                                onDragStart={handleDragStart(item._uid)}
+                                onDragEnd={handleDragEnd}
+                                onDragOver={handleDragOver(item._uid)}
+                                onDragLeave={() => setDragOverUid(null)}
+                                onDrop={handleDrop(item._uid)}
                               >
                                 <div className="flex items-center gap-3">
+                                  <span
+                                    className="flex-shrink-0 cursor-grab active:cursor-grabbing text-[#bbb] hover:text-[#1677ff] transition-colors"
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                  >
+                                    <HolderOutlined className="text-[11px]" />
+                                  </span>
                                   <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: dotColors[index % dotColors.length] }} />
                                   <span className="text-[12px] font-medium text-[#1a1a2e] truncate leading-normal">{item.name}</span>
                                 </div>

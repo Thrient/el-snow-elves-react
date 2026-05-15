@@ -89,8 +89,8 @@ export const useEditorStore = create<EditorState>()(
       discardDraft: () => {
         set({ currentTask: null, isDirty: false });
         // Force persist to save the cleared state
-        sessionStorage.removeItem("editor-draft");
-        localStorage.removeItem("editor-draft");
+        sessionStorage.removeItem("editor-draft-v2");
+        localStorage.removeItem("editor-draft-v2");
       },
 
       setDirty: (dirty) => set({ isDirty: dirty }),
