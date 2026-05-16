@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type FC } from "react";
-import { Button, Input, Modal, Popconfirm, Table, message, Spin, Radio } from "antd";
+import { Button, Input, Modal, Popconfirm, Table, Tooltip, message, Spin, Radio } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined, DeleteOutlined, PlayCircleOutlined, ReloadOutlined, UserOutlined, ScanOutlined } from "@ant-design/icons";
 import { useAccountStore } from "@/store/account-store";
@@ -72,6 +72,18 @@ const AccountsPage: FC = () => {
       await window.pywebview?.api.emit("API:ACCOUNT:REPLAY:START", name);
       message.info(`正在回放「${name}」——请在游戏中触发登录`);
     } catch { setReplaying(""); }
+  };
+
+  // ---- 一键启动 ----
+  const [quickStarting, setQuickStarting] = useState<string>("");
+
+  const handleQuickStart = async (name: string) => {
+    setQuickStarting(name);
+    try {
+      await window.pywebview?.api.emit("API:ACCOUNT:QUICK_START", name);
+      message.success(`「${name}」一键启动完成`);
+    } catch { message.error("一键启动失败"); }
+    setQuickStarting("");
   };
 
   const stopReplay = async () => {
@@ -147,6 +159,20 @@ const AccountsPage: FC = () => {
       width: 120,
       render: (_, record) => (
         <div className="flex items-center gap-1">
+          <Tooltip title="一键启动">
+            <Button
+              type="text"
+              size="small"
+              loading={quickStarting === record.name}
+              onClick={() => handleQuickStart(record.name)}
+              icon={
+                <svg viewBox="0 0 16 16" width="1em" height="1em">
+                  <circle cx="8" cy="8" r="7.2" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                  <text x="8" y="8" textAnchor="middle" dominantBaseline="central" fontSize="9" fontWeight="700" fill="currentColor">糊</text>
+                </svg>
+              }
+            />
+          </Tooltip>
           <Button
             type="text"
             size="small"
