@@ -374,7 +374,11 @@ const FloatingPanel: FC = () => {
                           const indicator = swiping?.uid === item._uid && swiping?.type === "queue" ? swipeIndicator(swipeX) : null
                           const isDragOver = dragOverUid === item._uid
                           return (
-                            <div key={item._uid} className="relative overflow-hidden rounded-xl">
+                            <div key={item._uid} className="relative overflow-hidden rounded-xl"
+                              onDragOver={handleDragOver(item._uid)}
+                              onDragLeave={() => setDragOverUid(null)}
+                              onDrop={handleDrop(item._uid)}
+                            >
                               {indicator && (
                                 <div
                                   className="absolute inset-0 rounded-xl flex items-center px-4 text-[11px] font-semibold transition-opacity duration-100"
@@ -405,17 +409,14 @@ const FloatingPanel: FC = () => {
                                   openConfig(item._uid)
                                 }}
                                 onMouseDown={(e) => handleCardMouseDown({ uid: item._uid, type: "queue" }, e)}
-                                draggable
-                                onDragStart={handleDragStart(item._uid)}
-                                onDragEnd={handleDragEnd}
-                                onDragOver={handleDragOver(item._uid)}
-                                onDragLeave={() => setDragOverUid(null)}
-                                onDrop={handleDrop(item._uid)}
                               >
                                 <div className="flex items-center gap-3">
                                   <span
                                     className="flex-shrink-0 cursor-grab active:cursor-grabbing text-[#bbb] hover:text-[#1677ff] transition-colors"
                                     onMouseDown={(e) => e.stopPropagation()}
+                                    draggable
+                                    onDragStart={handleDragStart(item._uid)}
+                                    onDragEnd={handleDragEnd}
                                   >
                                     <HolderOutlined className="text-[11px]" />
                                   </span>

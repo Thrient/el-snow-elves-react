@@ -223,8 +223,8 @@ const TaskEditorPage: FC = () => {
       await editor.createTask(newName.trim(), newVersion.trim(), newAuthor.trim(), newDesc.trim());
       setCreateOpen(false); setNewName(""); setNewVersion("1.0.0"); setNewAuthor(""); setNewDesc("");
       message.success("任务创建成功"); loadTaskList();
-      if (editor.currentTask) {
-        const task = editor.currentTask;
+      const task = useEditorStore.getState().currentTask;
+      if (task) {
         requestAnimationFrame(() => {
           const { nodes, edges } = taskToFlow(task);
           setFlowNodes(nodes); setFlowEdges(edges);
@@ -280,6 +280,15 @@ const TaskEditorPage: FC = () => {
     return () => window.removeEventListener("keydown", h);
   }, [isEditing]);
 
+  // 抽屉步骤被外部删除（undo 等）时自动关闭
+  useEffect(() => {
+    if (!drawerStep || !editor.currentTask) return;
+    const steps = editor.currentTask[drawerStep.isCommon ? "common" : "steps"] as Record<string, Step> | undefined;
+    if (!steps?.[drawerStep.name]) {
+      setDrawerStep(null);
+    }
+  }, [editor.currentTask, drawerStep]);
+
   if (!isEditing) {
     return (
       <div className="flex flex-col h-full bg-white rounded-lg shadow-sm m-x-4 m-b-4 overflow-hidden border border-[#eef0f2]">
@@ -291,18 +300,18 @@ const TaskEditorPage: FC = () => {
           </div>
           <Button icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新建任务</Button>
         </div>
-        <div className="flex-1 flex items-start justify-center pt-20">
-          <div className="w-full max-w-lg">
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 rounded-2xl bg-[#f0f2f5] flex items-center justify-center mx-auto mb-4">
-                <FolderOpenOutlined className="text-3xl text-[#a0aec0]" /></div>
-              <h2 className="text-lg font-bold text-[#1a1a2e] mb-1">选择或创建任务</h2>
-              <p className="text-sm text-[#8b8fa3]">打开已有任务开始编辑，或创建一个新任务</p>
+        <div className="flex-1 overflow-y-auto flex justify-center pt-8 pb-4">
+          <div className="w-full max-w-lg px-4">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-2xl bg-[#f0f2f5] flex items-center justify-center mx-auto mb-3">
+                <FolderOpenOutlined className="text-2xl text-[#a0aec0]" /></div>
+              <h2 className="text-base font-bold text-[#1a1a2e] mb-1">选择或创建任务</h2>
+              <p className="text-xs text-[#8b8fa3]">打开已有任务开始编辑，或创建一个新任务</p>
             </div>
             <Input size="large" prefix={<span className="text-[#a0aec0]">🔍</span>}
               placeholder="搜索任务..." value={taskSearch} allowClear
               onChange={(e) => setTaskSearch(e.target.value)} className="mb-4" />
-            <div className="flex flex-col gap-1 max-h-[50vh] overflow-y-auto">
+            <div className="flex flex-col gap-1 pb-4">
               {filtered.map((t) => (
                 <div key={t.id} onClick={() => openTask(t)}
                   className="flex items-center gap-4 px-5 py-4 rounded-xl cursor-pointer transition-all border border-[#eef0f2] hover:border-[#d0dbff] hover:bg-[#fafbff] hover:shadow-sm">
