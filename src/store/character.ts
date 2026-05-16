@@ -14,6 +14,7 @@ type Character = {
   character: string
   hwnd: string
   running: boolean
+  locked: boolean
   opacity: number
   currentTask: string | null
   executeList: ExecuteEntry[]
@@ -51,6 +52,7 @@ export const useCharacterStore = create<State>((set, get) => ({
           character: data.character,
           hwnd: data.hwnd,
           running: data.running,
+          locked: data.locked ?? true,
           opacity: data.opacity,
           currentTask: data.currentTask,
           plans,
