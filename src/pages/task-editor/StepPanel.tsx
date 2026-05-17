@@ -11,6 +11,7 @@ import BoxPickerModal from "@/components/box-picker/BoxPickerModal";
 import PreprocessEditor from "./PreprocessEditor";
 import KeyInput from "@/components/settings-field/components/KeyInput";
 import CoordPickerModal from "@/components/coord-picker/CoordPickerModal";
+import ExpressionActionBuilder from "@/components/expression-builder/ExpressionActionBuilder";
 import { useCharacterStore } from "@/store/character";
 import { useEditorStore } from "@/store/editor-store";
 
@@ -123,7 +124,7 @@ const ParamsEditor: FC<{ step: Step; ctx: EditorCtx; onUpdate: Props["onUpdate"]
         setTemplateOptions([]);
       }
     })();
-  }, [showArgs, ctx.taskName, ctx.version]);
+  }, [showArgs, ctx.taskName, ctx.version, ctx.refreshKey]);
 
   const renderParamInput = (key: string, value: unknown) => {
     if (key === "preprocess") {
@@ -491,7 +492,6 @@ const StepPanel: FC<Props> = ({ stepName, step, isCommon, ctx, onClose, onRename
               for (const k of Object.keys(oldParams)) {
                 if (k === "args" || allowed.includes(k)) clean[k] = oldParams[k];
               }
-              // 必填参数自动注入
               for (const k of (REQUIRED_PARAMS[newAction] ?? [])) {
                 if (!(k in clean)) clean[k] = "";
               }
@@ -501,10 +501,48 @@ const StepPanel: FC<Props> = ({ stepName, step, isCommon, ctx, onClose, onRename
               onUpdate("action", newAction);
             }}
             options={ACTION_OPTS.map(o => ({
-              ...o, label: <span className="flex items-center gap-2">
-                <code className="text-[11px] font-semibold text-[#1a1a2e] bg-[#f0f2f5] px-1.5 py-0.5 rounded">{o.label}</code>
-                <span className="text-[11px] text-[#8b8fa3]">{o.desc}</span></span>,
-            }))} />
+              value: o.value,
+              label: (
+                <span className="flex items-center gap-1.5">
+                  <span style={{ color: o.color, fontSize: 13, display: "inline-flex" }}>{o.icon}</span>
+                  <code className="text-[11px] font-semibold px-1.5 py-px rounded" style={{ background: `${o.color}14`, color: o.color }}>
+                    {o.label}
+                  </code>
+                </span>
+              ),
+            }))}
+            optionRender={(option) => {
+              const o = ACTION_OPTS.find((a) => a.value === option.value);
+              if (!o) return option.label;
+              return (
+                <div className="flex items-center gap-2 px-1 py-0.5">
+                  <span className="flex items-center justify-center rounded shrink-0" style={{ width: 24, height: 24, background: `${o.color}14`, color: o.color, fontSize: 13 }}>
+                    {o.icon}
+                  </span>
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <code className="text-[11px] font-semibold px-1.5 py-px rounded" style={{ background: `${o.color}14`, color: o.color }}>
+                        {o.label}
+                      </code>
+                      <span className="text-[9px] uppercase tracking-wider font-semibold px-1 rounded" style={{ background: "#f3f0ec", color: "#9a8e82" }}>
+                        {o.group}
+                      </span>
+                    </div>
+                    <span className="text-[11px] leading-tight" style={{ color: "#8b8fa3" }}>{o.desc}</span>
+                  </div>
+                </div>
+              );
+            }}
+          />
+
+          {/* Expression builder — shown when action is expression-type */}
+          {step.action && (step.action === "{...}" || step.action === "{True}" || step.action.startsWith("{")) && (
+            <ExpressionActionBuilder
+              value={step.action}
+              varOptions={[...ctx.builtinVars, ...ctx.configVars, ...ctx.taskValueVars, ...ctx.setVars]}
+              onChange={(expr) => onUpdate("action", expr)}
+            />
+          )}
         </div>
 
         {/* ── Debug execution ── */}

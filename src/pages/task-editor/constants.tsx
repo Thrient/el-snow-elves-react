@@ -16,19 +16,36 @@ import {
   UserOutlined,
   DesktopOutlined,
   EditOutlined,
+  PictureOutlined,
+  SearchOutlined,
+  ClockCircleOutlined,
+  EyeInvisibleOutlined,
+  SwapOutlined,
+  CheckCircleOutlined,
+  BranchesOutlined,
 } from "@ant-design/icons";
 
-export const ACTION_OPTS = [
-  { value: "touch",          label: "touch",          desc: "识别模板并点击" },
-  { value: "exits",          label: "exits",          desc: "检测模板是否存在" },
-  { value: "wait",           label: "wait",           desc: "等待模板出现" },
-  { value: "wait_disappear", label: "wait_disappear", desc: "等待模板消失" },
-  { value: "key_click",      label: "key_click",      desc: "发送按键" },
-  { value: "input",          label: "input",          desc: "输入文本" },
-  { value: "mouse_click",    label: "mouse_click",    desc: "点击坐标" },
-  { value: "set_character",  label: "set_character",  desc: "捕获角色头像" },
-  { value: "switch_account", label: "switch_account", desc: "切换游戏账号" },
-  { value: "{True}",         label: "{True}",         desc: "无条件通过" },
+export interface ActionOpt {
+  value: string;
+  label: string;
+  desc: string;
+  icon: ReactNode;
+  color: string;
+  group: string;
+}
+
+export const ACTION_OPTS: ActionOpt[] = [
+  { value: "touch",          label: "touch",          desc: "识别模板并点击",  icon: <PictureOutlined />,      color: "#3b82f6", group: "图像操作" },
+  { value: "exits",          label: "exits",          desc: "检测模板是否存在", icon: <SearchOutlined />,        color: "#10b981", group: "图像操作" },
+  { value: "wait",           label: "wait",           desc: "等待模板出现",    icon: <ClockCircleOutlined />,    color: "#f59e0b", group: "图像操作" },
+  { value: "wait_disappear", label: "wait_disappear", desc: "等待模板消失",    icon: <EyeInvisibleOutlined />,   color: "#f97316", group: "图像操作" },
+  { value: "key_click",      label: "key_click",      desc: "发送按键",        icon: <CodeSandboxOutlined />,    color: "#6366f1", group: "输入操作" },
+  { value: "input",          label: "input",          desc: "输入文本",        icon: <EditOutlined />,           color: "#14b8a6", group: "输入操作" },
+  { value: "mouse_click",    label: "mouse_click",    desc: "点击坐标",        icon: <PushpinOutlined />,        color: "#ec4899", group: "输入操作" },
+  { value: "set_character",  label: "set_character",  desc: "捕获角色头像",    icon: <UserOutlined />,           color: "#8b5cf6", group: "角色账号" },
+  { value: "switch_account", label: "switch_account", desc: "切换游戏账号",    icon: <SwapOutlined />,           color: "#1677ff", group: "角色账号" },
+  { value: "{True}",         label: "{True}",         desc: "无条件通过",      icon: <CheckCircleOutlined />,    color: "#10b981", group: "流程控制" },
+  { value: "{...}",          label: "{...}",          desc: "表达式判断",      icon: <BranchesOutlined />,       color: "#d4513b", group: "流程控制" },
 ];
 
 export interface ParamMeta {
@@ -70,6 +87,7 @@ export const ACTION_PARAMS: Record<string, string[]> = {
   set_character:  ["hwnd"],
   switch_account: ["account_name"],
   "{True}":       [],
+  "{...}":        [],
 };
 
 /** 必填参数 — 切换动作时自动注入 */
@@ -99,6 +117,14 @@ export interface EditorCtx {
   taskCommonSteps: { value: string; label: string }[];
   globalCommonSteps: { value: string; label: string }[];
   stepParamsMap: Record<string, Record<string, unknown>>;
+  /** Raw step data — for looking up params directly */
+  allStepsData: Record<string, {
+    action?: string; params?: Record<string, unknown>;
+    prefix?: any[]; postfix?: any[]; failure_extra?: any[]; success_extra?: any[];
+    next?: string; success?: string; failure?: string;
+  }>;
+  /** Bump when user clicks refresh — children watch this to reload disk data */
+  refreshKey: number;
   hwnd: string;
   taskName?: string;
   version?: string;

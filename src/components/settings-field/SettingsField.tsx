@@ -23,7 +23,13 @@ interface Props {
 
 const SettingsField: FC<Props> = ({ cell, value, onChange }) => {
   const label = cell.text && (
-    <span className="text-sm text-[#333] whitespace-nowrap">{cell.text}</span>
+    <span
+      className="text-sm text-[#4a423b] whitespace-nowrap shrink-0 overflow-hidden text-ellipsis inline-block font-semibold"
+      style={{ width: "64px", textAlign: "justify", textAlignLast: "justify", textJustify: "inter-character" }}
+      title={cell.text}
+    >
+      {cell.text}：
+    </span>
   );
 
   switch (cell.model) {

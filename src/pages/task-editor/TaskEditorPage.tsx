@@ -19,6 +19,7 @@ import type { StepNodeData, StepEdgeData } from "@/types/flow";
 import type { Node, Edge } from "@xyflow/react";
 import type { EditorCtx } from "./constants";
 import { BUILTIN_VARS } from "./constants";
+import { extractAllParams } from "@/utils/expression";
 import LayoutBuilder from "./LayoutBuilder";
 import StepPanel from "./StepPanel";
 import TaskSettingsModal from "./TaskSettingsModal";
@@ -40,12 +41,14 @@ const TaskEditorPage: FC = () => {
   const [drawerStep, setDrawerStep] = useState<{ name: string; isCommon: boolean } | null>(null);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-  const [globalCommonNames, setGlobalCommonNames] = useState<string[]>([]);
+  const [globalCommonData, setGlobalCommonData] = useState<Record<string, { action?: string; params?: Record<string, unknown> }>>({});
   const [savedPositions, setSavedPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [newName, setNewName] = useState("");
   const [newVersion, setNewVersion] = useState("1.0.0");
   const [newAuthor, setNewAuthor] = useState("");
   const [newDesc, setNewDesc] = useState("");
+
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const loadTaskList = useCallback(async () => {
     try {
@@ -60,6 +63,22 @@ const TaskEditorPage: FC = () => {
     } catch { /* */ }
   }, []);
 
+  /** 刷新所有磁盘数据（不覆盖当前编辑内容） */
+  const handleRefresh = useCallback(async () => {
+    // 清空后端公共步骤缓存，强制下次执行时重新读磁盘
+    window.pywebview?.api.emit("API:COMMON:CACHE:CLEAR").catch(() => {});
+    // 刷新全局公共步骤
+    window.pywebview?.api.emit("API:AUTOCOMPLETE:COMMON:STEPS")
+      .then((data: Record<string, { action?: string; params?: Record<string, unknown> }>) => {
+        if (data && typeof data === "object" && !Array.isArray(data)) setGlobalCommonData(data);
+      })
+      .catch(() => {});
+    // 刷新任务列表
+    await loadTaskList();
+    // 通知子组件刷新（模板列表等）
+    setRefreshKey((k) => k + 1);
+  }, [loadTaskList]);
+
   const filtered = useMemo(
     () => taskList.filter((t) => t.name.toLowerCase().includes(taskSearch.toLowerCase())),
     [taskList, taskSearch],
@@ -73,8 +92,8 @@ const TaskEditorPage: FC = () => {
 
   const allStepNames = useMemo(() => {
     const owned = new Set([...taskStepNames, ...taskCommonNames]);
-    return [...taskStepNames, ...taskCommonNames, ...globalCommonNames.filter((n) => !owned.has(n))];
-  }, [taskStepNames, taskCommonNames, globalCommonNames]);
+    return [...taskStepNames, ...taskCommonNames, ...Object.keys(globalCommonData).filter((n) => !owned.has(n))];
+  }, [taskStepNames, taskCommonNames, globalCommonData]);
 
   const setVars = useMemo(() => {
     const names = new Set<string>();
@@ -117,36 +136,36 @@ const TaskEditorPage: FC = () => {
     makeStepOpts(taskCommonNames, editor.currentTask?.common ?? {}, "任务公共步骤"),
     [taskCommonNames, editor.currentTask?.common]);
   const globalCommonSteps = useMemo(() =>
-    makeStepOpts(globalCommonNames.filter((n) => !taskStepNames.includes(n) && !taskCommonNames.includes(n)), {}, "全局公共步骤"),
-    [globalCommonNames, taskStepNames, taskCommonNames]);
+    makeStepOpts(
+      Object.keys(globalCommonData).filter((n) => !taskStepNames.includes(n) && !taskCommonNames.includes(n)),
+      globalCommonData,
+      "全局公共步骤"
+    ),
+    [globalCommonData, taskStepNames, taskCommonNames]);
 
-  /** 从 args 图片名中提取 {参数名:默认值} 模板参数 */
-  const stepParamsMap = useMemo(() => {
+  /** Full step data (global + task + task-common) — needed by recursive param extraction */
+  const allStepsData = { ...globalCommonData, ...editor.currentTask?.steps, ...editor.currentTask?.common };
+
+  /** Extract {参数名:默认值} from each step via recursive transitive scan
+   *  (prefix/postfix/failure_extra/success_extra + next/success/failure chains) */
+  const stepParamsMap = (() => {
     const m: Record<string, Record<string, unknown>> = {};
-    const extract = (entries: [string, Step][]) => {
-      for (const [name, s] of entries) {
-        const args = (s.params?.args as string[]) ?? [];
-        const extracted: Record<string, unknown> = {};
-        for (const arg of args) {
-          for (const match of arg.matchAll(/\{(\w+):([^}]*)\}/g)) {
-            extracted[match[1]] = match[2];
-          }
-        }
-        if (Object.keys(extracted).length > 0) m[name] = extracted;
-      }
-    };
-    if (editor.currentTask) {
-      extract(Object.entries(editor.currentTask.steps ?? {}));
-      extract(Object.entries(editor.currentTask.common ?? {}));
+    const taskStepNames = [...Object.keys(editor.currentTask?.steps ?? {}), ...Object.keys(editor.currentTask?.common ?? {})];
+    for (const name of taskStepNames) {
+      const params = extractAllParams(name, allStepsData);
+      if (Object.keys(params).length > 0) m[name] = params;
     }
     return m;
-  }, [editor.currentTask?.steps, editor.currentTask?.common]);
+  })();
 
   const ctx: EditorCtx = {
     stepKeys: allStepNames,
     builtinVars, configVars, taskValueVars, setVars: setVarOptions,
     taskSteps, taskCommonSteps, globalCommonSteps,
-    stepParamsMap, hwnd: characterStore.selectedHwnd ?? '',
+    stepParamsMap,
+    allStepsData,
+    refreshKey,
+    hwnd: characterStore.selectedHwnd ?? '',
     taskName: editor.currentTask?.name, version: editor.currentTask?.version,
   };
 
@@ -182,7 +201,9 @@ const TaskEditorPage: FC = () => {
     }
     loadTaskList();
     window.pywebview?.api.emit("API:AUTOCOMPLETE:COMMON:STEPS")
-      .then((names: string[]) => { if (Array.isArray(names)) setGlobalCommonNames(names); })
+      .then((data: Record<string, { action?: string; params?: Record<string, unknown> }>) => {
+        if (data && typeof data === "object" && !Array.isArray(data)) setGlobalCommonData(data);
+      })
       .catch(() => {});
   }, []);
 
@@ -381,7 +402,7 @@ const TaskEditorPage: FC = () => {
           <Button icon={<CameraOutlined />} disabled={!characterStore.selectedHwnd} onClick={() => setCropperOpen(true)}>截图模板</Button>
           <Button type="primary" icon={<SaveOutlined />} disabled={!editor.isDirty} onClick={handleSave}>
             保存 <span className="text-[10px] opacity-60 ml-0.5">Ctrl+S</span></Button>
-          <Tooltip title="刷新"><Button icon={<ReloadOutlined />} onClick={loadTaskList} /></Tooltip>
+          <Tooltip title="从磁盘重新加载数据"><Button icon={<ReloadOutlined />} onClick={handleRefresh} /></Tooltip>
         </Space>
       </div>
 

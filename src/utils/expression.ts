@@ -1,0 +1,141 @@
+/** Shared expression parse/build utilities */
+
+export const COMPARE_OPS = ["==", "!=", ">", "<", ">=", "<="];
+
+export interface Cond {
+  var: string;
+  op: string;
+  val: string;
+  logic: string;
+}
+
+export const defaultCond = (logic = "&&"): Cond => ({ var: "", op: "==", val: "", logic });
+
+export const stripBraces = (v: string) => (v.startsWith("{") ? v.slice(1, -1) : v);
+
+export const condPart = (c: Cond) => `${stripBraces(c.var)} ${c.op} '${c.val}'`;
+
+/** Build expression string from Cond[] — {a == '1' && b == '2'} */
+export const buildExpr = (conds: Cond[]): string => {
+  const valid = conds.filter((c) => c.var);
+  if (valid.length === 0) return "";
+  return `{${valid.map((c, i) => (i > 0 ? ` ${c.logic} ` : "") + condPart(c)).join("")}}`;
+};
+
+/** Parse expression string back to Cond[] */
+export const parseExpr = (expr: string): Cond[] => {
+  if (!expr) return [];
+  let inner = expr.trim();
+  if (inner.startsWith("{") && inner.endsWith("}") && inner.indexOf("{", 1) === -1) {
+    inner = inner.slice(1, -1);
+  }
+  const parts = inner.split(/\s*(&&|\|\|)\s*/);
+  const result: Cond[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const seg = parts[i].trim();
+    if (seg === "&&" || seg === "||") continue;
+    let s = seg;
+    if (s.startsWith("{")) s = s.slice(1);
+    if (s.endsWith("}")) s = s.slice(0, -1);
+    const m = s.match(/^(.+?)\s*(==|!=|>=|<=|>|<)\s*['"]?([^'"]*?)['"]?$/);
+    if (m) {
+      const logic = i > 1 && parts[i - 1]?.trim() === "||" ? "||" : "&&";
+      result.push({ var: `{${m[1].trim()}}`, op: m[2], val: m[3], logic });
+    }
+  }
+  return result;
+};
+
+/** Step definition shape for param extraction */
+interface StepDef {
+  action?: string;
+  params?: { args?: string[]; [k: string]: unknown };
+  prefix?: (string | { step: string; args?: Record<string, unknown>; when?: string })[];
+  postfix?: (string | { step: string; args?: Record<string, unknown>; when?: string })[];
+  failure_extra?: (string | { step: string; args?: Record<string, unknown>; when?: string })[];
+  success_extra?: (string | { step: string; args?: Record<string, unknown>; when?: string })[];
+  next?: string;
+  success?: string;
+  failure?: string;
+}
+
+const SUB_LISTS = ["prefix", "postfix", "failure_extra", "success_extra"] as const;
+
+/**
+ * Recursively extract all {param:default} template parameters from a step
+ * and its entire sub-step/next chain (prefix, postfix, failure_extra, success_extra,
+ * and their next/success/failure targets).
+ */
+export function extractAllParams(
+  stepName: string,
+  allStepsData: Record<string, StepDef | undefined>,
+  visited: Set<string> = new Set(),
+): Record<string, unknown> {
+  if (!stepName || stepName === "任务结束" || visited.has(stepName)) return {};
+  visited.add(stepName);
+
+  const stepData = allStepsData[stepName];
+  if (!stepData) return {};
+
+  const result: Record<string, unknown> = {};
+
+  // 1. From own params — both args array and named params values
+  const ownArgs = stepData.params?.args ?? [];
+  for (const arg of ownArgs) {
+    for (const m of String(arg).matchAll(/\{([^:}]+):([^}]*)\}/g)) {
+      if (!(m[1] in result)) result[m[1]] = m[2];
+    }
+  }
+  // Also scan all non-args params values, e.g. {text: "{文本:600}"}
+  if (stepData.params) {
+    for (const [k, v] of Object.entries(stepData.params)) {
+      if (k === "args") continue;
+      if (typeof v === "string") {
+        for (const m of v.matchAll(/\{([^{}:]+):([^}]*)\}/g)) {
+          if (!(m[1] in result)) result[m[1]] = m[2];
+        }
+      }
+    }
+  }
+
+  // 2. From sub-step call sites (prefix/postfix/failure_extra/success_extra)
+  for (const key of SUB_LISTS) {
+    const items = (stepData as Record<string, unknown>)[key] as StepDef[keyof Pick<StepDef, "prefix" | "postfix" | "failure_extra" | "success_extra">] | undefined;
+    if (!items) continue;
+    for (const item of items) {
+      const itemName = typeof item === "string" ? item : item?.step;
+      // 2a. Extract from call-site args — both keys AND template refs in values
+      if (typeof item === "object" && item.args) {
+        for (const [k, v] of Object.entries(item.args)) {
+          if (!(k in result)) result[k] = v;
+          // Also scan value for {param:default} refs, e.g. "文本": "{横坐标:600}" → expose 横坐标
+          if (typeof v === "string") {
+            for (const m of v.matchAll(/\{([^{}:]+):([^}]*)\}/g)) {
+              if (!(m[1] in result)) result[m[1]] = m[2];
+            }
+          }
+        }
+      }
+      // 2b. Recurse into the called step's own params + its sub-chains
+      if (itemName) {
+        const inner = extractAllParams(itemName, allStepsData, visited);
+        for (const [k, v] of Object.entries(inner)) {
+          if (!(k in result)) result[k] = v;
+        }
+      }
+    }
+  }
+
+  // 3. Follow next/success/failure chains (subflow continues through these)
+  for (const key of ["next", "success", "failure"] as const) {
+    const target = (stepData as Record<string, unknown>)[key] as string | undefined;
+    if (target && target !== "任务结束") {
+      const chain = extractAllParams(target, allStepsData, visited);
+      for (const [k, v] of Object.entries(chain)) {
+        if (!(k in result)) result[k] = v;
+      }
+    }
+  }
+
+  return result;
+}
