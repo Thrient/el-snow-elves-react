@@ -110,6 +110,17 @@ const MiniPreview: FC<Props> = ({ cell }) => {
           <span className="w-[22px] h-[22px] rounded-lg border border-slate-200 shadow-sm bg-gradient-to-br from-rose-400 via-emerald-400 to-blue-400" />
         </span>
       );
+    case "el-input-tags":
+      return (
+        <span className="inline-flex items-center gap-1.5 w-full">
+          {label && <span className="text-[10px] font-medium text-slate-600 shrink-0">{label}</span>}
+          <span className="flex-1 min-h-[22px] rounded-lg border border-dashed border-cyan-200 bg-cyan-50/40 px-2 py-1 flex items-center gap-1 shadow-sm">
+            <span className="w-4 h-3.5 rounded-sm bg-cyan-100 border border-cyan-200 flex items-center justify-center text-[8px] text-cyan-500 font-semibold">Aa</span>
+            <span className="text-[9px] text-cyan-300 italic">{ph || "标签..."}</span>
+            <span className="text-[9px] text-cyan-300 ml-auto">⌨</span>
+          </span>
+        </span>
+      );
     default:
       return (
         <span className="inline-flex items-center gap-1.5 w-full">

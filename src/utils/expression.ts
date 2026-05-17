@@ -13,7 +13,20 @@ export const defaultCond = (logic = "&&"): Cond => ({ var: "", op: "==", val: ""
 
 export const stripBraces = (v: string) => (v.startsWith("{") ? v.slice(1, -1) : v);
 
-export const condPart = (c: Cond) => `${stripBraces(c.var)} ${c.op} '${c.val}'`;
+// Only quote values that are literal strings (not numbers, not variable refs)
+const isLiteralString = (v: string) => {
+  if (!v) return false;
+  if (/^-?\d+(\.\d+)?$/.test(v.trim())) return false; // number
+  if (/^(true|false)$/i.test(v.trim())) return false;  // boolean
+  if (/^\{.+\}$/.test(v.trim())) return false;          // {var} reference
+  if (/^[a-zA-Z_一-鿿][\w一-鿿]*$/.test(v.trim())) return false; // bare var name
+  return true; // string literal
+};
+export const condPart = (c: Cond) => {
+  const left = stripBraces(c.var);
+  const right = isLiteralString(c.val) ? `'${c.val}'` : c.val;
+  return `${left} ${c.op} ${right}`;
+};
 
 /** Build expression string from Cond[] — {a == '1' && b == '2'} */
 export const buildExpr = (conds: Cond[]): string => {
@@ -37,10 +50,10 @@ export const parseExpr = (expr: string): Cond[] => {
     let s = seg;
     if (s.startsWith("{")) s = s.slice(1);
     if (s.endsWith("}")) s = s.slice(0, -1);
-    const m = s.match(/^(.+?)\s*(==|!=|>=|<=|>|<)\s*['"]?([^'"]*?)['"]?$/);
+    const m = s.match(/^(.+?)\s*(==|!=|>=|<=|>|<)\s*(['"])?([^'"]*?)\3?$/);
     if (m) {
       const logic = i > 1 && parts[i - 1]?.trim() === "||" ? "||" : "&&";
-      result.push({ var: `{${m[1].trim()}}`, op: m[2], val: m[3], logic });
+      result.push({ var: `{${m[1].trim()}}`, op: m[2], val: m[4] ?? m[3] ?? "", logic });
     }
   }
   return result;

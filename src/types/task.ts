@@ -12,6 +12,7 @@ export type CellModel =
   | 'el-slider'
   | 'el-date-picker'
   | 'el-color-picker'
+  | 'el-input-tags'
   | 'el-autocomplete-action'
   | 'el-autocomplete-template'
   | 'el-autocomplete-step'

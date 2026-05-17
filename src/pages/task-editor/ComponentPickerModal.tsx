@@ -24,6 +24,7 @@ const MODEL_META: Record<string, { label: string; short: string; color: string; 
   "el-slider":       { label: "滑块",     short: "—",  color: "#6366f1", bg: "#eef2ff" },
   "el-date-picker":  { label: "日期选择", short: "📅", color: "#14b8a6", bg: "#f0fdfa" },
   "el-color-picker": { label: "颜色选择", short: "◐",  color: "#a855f7", bg: "#faf5ff" },
+  "el-input-tags":  { label: "标签输入", short: "#",  color: "#0891b2", bg: "#ecfeff" },
 };
 
 function formatPreviewValue(val: unknown): string {
@@ -77,7 +78,7 @@ const ComponentPickerModal: FC<Props> = ({ open, varName, varValue, onSelect, on
             span: 12,
             model,
             store: varName,
-            placeholder: (model === "el-input" || model === "el-textarea")
+            placeholder: (model === "el-input" || model === "el-textarea" || model === "el-input-tags")
               ? previewStr
               : undefined,
             text: (model === "el-switch" || model === "el-checkbox" || model === "el-radio")

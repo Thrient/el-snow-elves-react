@@ -547,7 +547,7 @@ const ScreenshotCropperModal: FC<Props> = ({ open, hwnd, taskName, version, onCl
     try {
       await window.pywebview?.api.emit("API:TEMPLATE:SAVE", hwnd,
         [Math.round(crop.x), Math.round(crop.y), Math.round(crop.x + crop.w), Math.round(crop.y + crop.h)],
-        filename.trim(), "task", taskName, version);
+        filename.trim(), "task", taskName, version, capture?.base64);
       message.success(`已保存: ${filename}.bmp`);
       onSaved(filename.trim());
       setConfirmOpen(false); onClose();

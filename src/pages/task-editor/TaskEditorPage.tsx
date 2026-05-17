@@ -167,6 +167,8 @@ const TaskEditorPage: FC = () => {
     refreshKey,
     hwnd: characterStore.selectedHwnd ?? '',
     taskName: editor.currentTask?.name, version: editor.currentTask?.version,
+    values: editor.currentTask?.values ?? {},
+    layout: editor.currentTask?.layout ?? [],
   };
 
   const drawerData = drawerStep && editor.currentTask
@@ -425,7 +427,7 @@ const TaskEditorPage: FC = () => {
               setFlowNodes([...flowNodes, { id: name, type: "stepNode", position: { x: x - 80, y: y - 20 }, data: { stepName: name, action: "", isCommon, isStart: false } }]);
             }} />
         </div>
-        <div className={`shrink-0 border-l border-[#e8eaed] bg-white flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${drawerStep ? "w-[380px]" : "w-0 border-l-0"}`}>
+        <div className={`shrink-0 border-l border-[#e8eaed] bg-white flex flex-col transition-all duration-300 ease-in-out overflow-hidden ${drawerStep ? "w-[440px]" : "w-0 border-l-0"}`}>
           {drawerStep && drawerData && (
             <StepPanel stepName={drawerStep.name} step={drawerData} isCommon={drawerStep.isCommon} ctx={ctx}
               onClose={() => setDrawerStep(null)}

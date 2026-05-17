@@ -38,6 +38,7 @@ const MODEL_META: Record<string, { label: string; short: string; color: string; 
   "el-slider":       { label: "滑块",     short: "—",  color: "#6366f1", bg: "#eef2ff" },
   "el-date-picker":  { label: "日期选择", short: "📅", color: "#14b8a6", bg: "#f0fdfa" },
   "el-color-picker": { label: "颜色选择", short: "◐",  color: "#a855f7", bg: "#faf5ff" },
+  "el-input-tags":  { label: "标签输入", short: "#",  color: "#0891b2", bg: "#ecfeff" },
 };
 
 const OPTION_MODELS = new Set<CellModel>(["el-select", "el-checkbox-group", "el-radio"]);
@@ -219,6 +220,24 @@ const LayoutBuilder: FC<LayoutBuilderProps> = ({ initialLayout = [], initialValu
     ).filter((row) => row.length > 0));
   }, []);
 
+  // Parse a string default value to its proper typed value (number / boolean / string)
+  function parseTyped(v: string): unknown {
+    const t = v.trim();
+    if (t === "") return "";
+    if (t.toLowerCase() === "true") return true;
+    if (t.toLowerCase() === "false") return false;
+    if (/^-?\d+$/.test(t)) return parseInt(t, 10);
+    if (/^-?\d+\.\d+$/.test(t)) return parseFloat(t);
+    return t;
+  }
+
+  // Display a value for editing (string-friendly)
+  function displayValue(v: unknown): string {
+    if (typeof v === "string") return v;
+    if (typeof v === "number" || typeof v === "boolean") return String(v);
+    return v === undefined || v === null ? "" : JSON.stringify(v);
+  }
+
   const handleCreateVar = useCallback(() => {
     if (!newVarName.trim()) {
       message.warning("变量名不能为空");
@@ -228,7 +247,7 @@ const LayoutBuilder: FC<LayoutBuilderProps> = ({ initialLayout = [], initialValu
       message.warning("变量名已存在");
       return;
     }
-    setValues((prev) => ({ ...prev, [newVarName.trim()]: newVarValue }));
+    setValues((prev) => ({ ...prev, [newVarName.trim()]: parseTyped(newVarValue) }));
     setCreateVarOpen(false);
     setNewVarName("");
     setNewVarValue("");
@@ -261,6 +280,7 @@ const LayoutBuilder: FC<LayoutBuilderProps> = ({ initialLayout = [], initialValu
     "el-radio":        ["text","disabled","optionType"],
     "el-date-picker":  ["text","placeholder","disabled","format"],
     "el-color-picker": ["text","disabled"],
+    "el-input-tags":  ["text","placeholder","disabled","allowClear"],
   };
 
   const renderField = (ri: number, ci: number, cell: Cell, field: string) => {
@@ -578,11 +598,11 @@ const LayoutBuilder: FC<LayoutBuilderProps> = ({ initialLayout = [], initialValu
                 <div>
                   <Lbl t="默认值"/>
                   <Input size="small" className="!rounded-lg !text-xs"
-                    value={selCell.store ? (typeof values[selCell.store] === "string" ? values[selCell.store] as string : JSON.stringify(values[selCell.store])) : ""}
+                    value={displayValue(selCell.store ? values[selCell.store] : "")}
                     onChange={(e) => {
                       const store = selCell.store;
                       if (!store) return;
-                      setValues((prev) => ({ ...prev, [store]: e.target.value }));
+                      setValues((prev) => ({ ...prev, [store]: parseTyped(e.target.value) }));
                     }}/>
                 </div>
                 <div className="flex items-end pb-0.5">

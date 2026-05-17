@@ -154,13 +154,16 @@ const SettingsField: FC<Props> = ({ cell, value, onChange }) => {
         </div>
       );
 
-    case "el-select":
+    case "el-select": {
+      const selectValue: unknown = (cell.mode === "multiple")
+        ? (Array.isArray(value) ? value : (value !== undefined && value !== null && value !== "" ? [value] : []))
+        : value;
       return (
         <div className="flex items-center gap-2">
           {label}
           <Select
             className="flex-1"
-            value={value as string | number}
+            value={selectValue as string | number | (string | number)[]}
             options={cell.options}
             allowClear={cell.allowClear}
             placeholder={cell.placeholder}
@@ -174,6 +177,29 @@ const SettingsField: FC<Props> = ({ cell, value, onChange }) => {
           />
         </div>
       );
+    }
+    case "el-input-tags": {
+      // Always tags mode — value is always array
+      const tagsValue: string[] = Array.isArray(value)
+        ? value
+        : (value !== undefined && value !== null && value !== "" ? [String(value)] : []);
+      return (
+        <div className="flex items-center gap-2">
+          {label}
+          <Select
+            className="flex-1"
+            mode="tags"
+            value={tagsValue}
+            placeholder={cell.placeholder ?? "输入后按回车添加标签"}
+            disabled={cell.disabled}
+            allowClear={cell.allowClear}
+            size={cell.size}
+            maxTagCount={cell.maxTagCount}
+            onChange={(v) => onChange(v)}
+          />
+        </div>
+      );
+    }
 
     case "el-slider":
       if (cell.range) {

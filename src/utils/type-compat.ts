@@ -15,14 +15,14 @@ export function detectValueType(val: unknown): ValueType {
 }
 
 const COMPATIBLE: Record<ValueType, CellModel[]> = {
-  string: ["el-input", "el-textarea", "el-select", "el-date-picker", "el-color-picker", "el-radio", "el-checkbox-group"],
+  string: ["el-input", "el-textarea", "el-select", "el-input-tags", "el-date-picker", "el-color-picker", "el-radio", "el-checkbox-group"],
   number: ["el-input-number", "el-slider", "el-select", "el-radio"],
   boolean: ["el-switch", "el-checkbox"],
   empty: [],
 };
 
 export const ALL_COMPONENT_MODELS: CellModel[] = [
-  "el-input", "el-input-number", "el-switch", "el-select", "el-textarea",
+  "el-input", "el-input-number", "el-switch", "el-select", "el-input-tags", "el-textarea",
   "el-checkbox", "el-checkbox-group", "el-radio", "el-slider", "el-date-picker", "el-color-picker",
 ];
 

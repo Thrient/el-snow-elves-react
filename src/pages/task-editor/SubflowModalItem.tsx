@@ -1,7 +1,8 @@
 import { useMemo, type FC } from "react";
 import { AutoComplete, Button, InputNumber, Popover, Select } from "antd";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, CodeOutlined } from "@ant-design/icons";
 import type { EditorCtx } from "./constants";
+import VariablePicker from "@/components/variable-picker/VariablePicker";
 import ExpressionActionBuilder from "@/components/expression-builder/ExpressionActionBuilder";
 import { extractAllParams } from "@/utils/expression";
 
@@ -75,21 +76,23 @@ const SubflowModalItem: FC<Props> = ({ index: i, item, ctx, arr, color = "#9ca3a
           <span className="text-[10px] text-[#9ca3af]">×</span>
           <InputNumber size="small" variant="borderless" min={1} max={99} style={{ width: 36 }} value={repeatCount}
             onChange={(v) => updateItem((o) => { o.step = v && v > 1 ? `${baseName}*${v}` : baseName; return o; })} />
-          {/* when */}
+          {/* when — ExpressionActionBuilder as primary editor */}
           <Popover trigger="click" placement="bottomLeft" overlayStyle={{ minWidth: 380 }}
             content={
               <ExpressionActionBuilder
                 value={itemWhen}
                 varOptions={varOnlyOptions}
-                modes={["var", "compare"]}
+                modes={["true", "var", "compare"]}
+                values={ctx.values}
+                layout={ctx.layout}
                 onChange={(expr) => updateItem((o) => { o.when = expr; return o; })}
               />
             }>
             <span className={`text-[10px] px-1.5 py-0.5 rounded cursor-pointer shrink-0 border transition-colors inline-block text-center min-w-[40px]
-              ${itemWhen ? "border-[#3b82f6] bg-[#eef2ff] text-[#3b82f6] font-medium" : "border-dashed border-[#d0d5dd] text-[#9ca3af] hover:border-[#3b82f6] hover:text-[#3b82f6]"}`}>
+              ${itemWhen ? "border-[#6366f1] bg-[#eef2ff] text-[#6366f1] font-medium" : "border-dashed border-[#d0d5dd] text-[#9ca3af] hover:border-[#6366f1] hover:text-[#6366f1]"}`}>
               when{itemWhen ? "*" : ""}
             </span>
-        </Popover>
+          </Popover>
         {/* args */}
         {stepParamKeys.length > 0 || argsCount > 0 ? (
           <Popover trigger="click" placement="bottomRight"
@@ -155,6 +158,23 @@ const SubflowModalItem: FC<Props> = ({ index: i, item, ctx, arr, color = "#9ca3a
                           filterOption={(iv, opt) => opt?.label?.toLowerCase().includes(iv.toLowerCase()) ?? false}
                           onChange={(v) => { const next = [...argsEntries]; next[ei] = [key, v]; setArgs(next); }}
                         />
+                        {/* Variable picker button */}
+                        <VariablePicker
+                          context="args"
+                          variables={[
+                            ...ctx.builtinVars.map(v => ({ syntax: v.value, label: v.label, category: "system" as const })),
+                            ...ctx.configVars.map(v => ({ syntax: v.value, label: v.label, category: "config" as const })),
+                            ...ctx.taskValueVars.map(v => ({ syntax: v.value, label: v.label, category: "task" as const })),
+                            ...ctx.setVars.map(v => ({ syntax: v.value, label: v.label, category: "set" as const })),
+                          ]}
+                          onInsert={(expr) => { const next = [...argsEntries]; next[ei] = [key, expr]; setArgs(next); }}
+                        >
+                          <button className="shrink-0 flex items-center justify-center text-xs transition-all duration-150 outline-none border-0 bg-transparent cursor-pointer"
+                            style={{ width: 18, height: 18, color: "#c4bbb2", fontSize: 11 }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = "#d4513b"; e.currentTarget.style.background = "#fef3ef"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = "#c4bbb2"; e.currentTarget.style.background = "transparent"; }}
+                          ><CodeOutlined /></button>
+                        </VariablePicker>
                         {/* Modified indicator */}
                         {isModified && (
                           <div style={{ width: 3, background: "#d4513b", flexShrink: 0 }} />

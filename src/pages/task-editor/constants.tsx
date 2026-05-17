@@ -128,4 +128,8 @@ export interface EditorCtx {
   hwnd: string;
   taskName?: string;
   version?: string;
+  /** Task runtime values — for variable type detection */
+  values?: Record<string, unknown>;
+  /** Layout — for inferring variable types from cell models */
+  layout?: { model?: string; store?: string }[][];
 }
